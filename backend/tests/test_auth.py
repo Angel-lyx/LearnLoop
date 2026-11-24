@@ -124,6 +124,43 @@ def test_registration_requires_invite_code(client, anon_client, monkeypatch):
     assert ok.status_code == 201
 
 
+def test_login_throttle_can_be_disabled(anon_client, monkeypatch):
+    monkeypatch.setattr(settings, "login_max_failures", 0, raising=False)
+    anon_client.post(
+        "/api/auth/register", json={"username": "tester", "password": GOOD_PASSWORD}
+    )
+    anon_client.post("/api/auth/logout")
+
+    for _ in range(8):
+        anon_client.post(
+            "/api/auth/login", json={"username": "tester", "password": "wrong"}
+        )
+
+    response = anon_client.post(
+        "/api/auth/login", json={"username": "tester", "password": GOOD_PASSWORD}
+    )
+    assert response.status_code == 200
+
+
+def test_login_throttle_window_is_configurable(anon_client, monkeypatch):
+    monkeypatch.setattr(settings, "login_max_failures", 2, raising=False)
+    anon_client.post(
+        "/api/auth/register", json={"username": "tester", "password": GOOD_PASSWORD}
+    )
+    anon_client.post("/api/auth/logout")
+
+    for _ in range(2):
+        anon_client.post(
+            "/api/auth/login", json={"username": "tester", "password": "wrong"}
+        )
+
+    blocked = anon_client.post(
+        "/api/auth/login", json={"username": "tester", "password": GOOD_PASSWORD}
+    )
+    assert blocked.status_code == 429
+    assert "失败次数过多" in blocked.json()["detail"]
+
+
 def test_change_password_requires_current_and_renews_session(client):
     response = client.post(
         "/api/auth/password",

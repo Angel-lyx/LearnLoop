@@ -31,6 +31,9 @@ class Settings(BaseSettings):
     allow_registration: bool = True
     # 设置后注册必须填写邀请码，避免公网地址被陌生人注册
     registration_code: str = ""
+    # 同一账号连续失败几次后锁定；设为 0 表示关闭这个限制
+    login_max_failures: int = 5
+    login_lockout_minutes: int = 15
 
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 

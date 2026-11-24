@@ -15,9 +15,7 @@ from .models import Setting, User, UserSession, utcnow
 HASH_ALGORITHM = "pbkdf2_sha256"
 HASH_ITERATIONS = 210_000
 
-# 登录失败节流：同一账号短时间连续失败后直接拒绝，避免公网被撞库
-MAX_FAILURES = 5
-FAILURE_WINDOW_SECONDS = 900
+# 同一账号短时间连续失败后拒绝登录，避免公网被撞库
 _failures: dict[str, list[float]] = {}
 
 T = TypeVar("T")
@@ -146,9 +144,18 @@ def save_setting(session: Session, user_id: int, key: str, value: str) -> None:
 # --- 登录失败节流 ---------------------------------------------------------
 
 
+def _throttle_enabled() -> bool:
+    return settings.login_max_failures > 0
+
+
+def _failure_window() -> float:
+    return max(settings.login_lockout_minutes, 1) * 60
+
+
 def _recent_failures(key: str) -> list[float]:
     now = time.monotonic()
-    attempts = [item for item in _failures.get(key, []) if now - item < FAILURE_WINDOW_SECONDS]
+    window = _failure_window()
+    attempts = [item for item in _failures.get(key, []) if now - item < window]
     if attempts:
         _failures[key] = attempts
     else:
@@ -157,14 +164,18 @@ def _recent_failures(key: str) -> list[float]:
 
 
 def check_login_allowed(username: str) -> None:
-    if len(_recent_failures(normalize_username(username))) >= MAX_FAILURES:
+    if not _throttle_enabled():
+        return
+    if len(_recent_failures(normalize_username(username))) >= settings.login_max_failures:
         raise HTTPException(
             status.HTTP_429_TOO_MANY_REQUESTS,
-            "失败次数过多，请 15 分钟后再试",
+            f"失败次数过多，请 {settings.login_lockout_minutes} 分钟后再试",
         )
 
 
 def record_login_failure(username: str) -> None:
+    if not _throttle_enabled():
+        return
     key = normalize_username(username)
     attempts = _recent_failures(key)
     attempts.append(time.monotonic())
