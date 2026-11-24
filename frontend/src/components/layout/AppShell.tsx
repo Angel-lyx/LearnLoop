@@ -33,16 +33,16 @@ export default function AppShell() {
         className="sticky top-0 flex h-screen w-60 shrink-0 flex-col border-r border-white/50 px-3 py-5 backdrop-blur-xl"
         style={{
           background:
-            "linear-gradient(180deg, rgba(255,255,255,.66) 0%, rgba(236,231,254,.58) 100%)",
+            "linear-gradient(180deg, rgba(255,255,255,.66) 0%, rgba(236,231,254,.55) 45%, rgba(224,236,255,.6) 100%)",
         }}
       >
         <div className="mb-6 flex items-center gap-2.5 px-1.5">
           <span
             className="flex h-9 w-9 items-center justify-center rounded-xl text-base font-bold text-white"
             style={{
-              background: "linear-gradient(145deg,#8b7bf2,#4a3ab4)",
+              background: "linear-gradient(145deg,#8b7bf2,#4f7cf5)",
               boxShadow:
-                "inset 0 1px 0 rgba(255,255,255,.4), 0 8px 18px -10px rgba(74,58,180,.9)",
+                "inset 0 1px 0 rgba(255,255,255,.4), 0 8px 18px -10px rgba(79,124,245,.9)",
             }}
             aria-hidden
           >
