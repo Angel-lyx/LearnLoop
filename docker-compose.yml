@@ -1,0 +1,20 @@
+services:
+  learnloop:
+    build: .
+    container_name: learnloop
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      # 数据卷：数据库与上传文件都放这里，容器重建不丢
+      DATA_DIR: /data
+      # 公网部署请填邀请码，避免陌生人注册
+      REGISTRATION_CODE: ${REGISTRATION_CODE:-}
+      ALLOW_REGISTRATION: ${ALLOW_REGISTRATION:-true}
+      # 用 Caddy/Nginx 加了 HTTPS 后改成 true
+      SESSION_COOKIE_SECURE: ${SESSION_COOKIE_SECURE:-false}
+      # 可选：给所有账号一个共享的兜底 Key；留空则由每个人在设置页自己填
+      DEEPSEEK_API_KEY: ${DEEPSEEK_API_KEY:-}
+      DEEPSEEK_MODEL: ${DEEPSEEK_MODEL:-deepseek-flash}
+    volumes:
+      - ./data:/data

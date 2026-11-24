@@ -3,6 +3,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { chromium } from "playwright";
+import { loginApi, loginBrowser } from "./auth.mjs";
 
 const BASE = process.env.BASE_URL ?? "http://127.0.0.1:5173";
 const PDF_PATH = process.env.PDF_PATH ?? "C:/Users/liuyo/AppData/Local/Temp/learnloop_sample.pdf";
@@ -40,11 +41,13 @@ async function createFixture() {
 
 async function main() {
   fs.mkdirSync(OUT, { recursive: true });
+  await loginApi(BASE);
   const { material } = await createFixture();
   console.log(`fixture: material #${material.id}`);
 
   const browser = await chromium.launch();
   const page = await browser.newPage({ viewport: { width: 1280, height: 1400 } });
+  await loginBrowser(page.context(), BASE);
   const errors = [];
   page.on("console", (msg) => {
     if (msg.type() === "error") {

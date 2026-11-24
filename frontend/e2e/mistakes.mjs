@@ -3,6 +3,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { chromium } from "playwright";
+import { loginApi, loginBrowser } from "./auth.mjs";
 
 const BASE = process.env.BASE_URL ?? "http://127.0.0.1:5173";
 const OUT = path.resolve("e2e/artifacts");
@@ -24,6 +25,7 @@ function ok(condition, message) {
 
 async function main() {
   fs.mkdirSync(OUT, { recursive: true });
+  await loginApi(BASE);
 
   const subject = await (
     await fetch(`${BASE}/api/subjects`, {
@@ -35,6 +37,7 @@ async function main() {
 
   const browser = await chromium.launch();
   const page = await browser.newPage({ viewport: { width: 1280, height: 1200 } });
+  await loginBrowser(page.context(), BASE);
   const errors = [];
   page.on("pageerror", (err) => errors.push(err.message));
   page.on("console", (msg) => {

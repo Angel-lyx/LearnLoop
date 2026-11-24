@@ -1,0 +1,15 @@
+# 放在服务器上，和 docker-compose.yml 一起用：
+#   docker compose -f docker-compose.yml -f deploy/caddy.compose.yml up -d
+#
+# 把 DOMAIN 换成你自己的域名，并把域名 A 记录指向服务器 IP。
+# Caddy 会自动申请 Let's Encrypt 证书，之后记得把 SESSION_COOKIE_SECURE 设为 true。
+{$DOMAIN:localhost} {
+	encode zstd gzip
+
+	# 上传资料可能比较大，放宽请求体上限
+	request_body {
+		max_size 100MB
+	}
+
+	reverse_proxy learnloop:8000
+}

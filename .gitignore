@@ -14,6 +14,9 @@ __pycache__/
 .pytest_cache/
 pytest-of-*/
 backend/data/
+# 本地起服务/跑 e2e 时的临时数据目录
+backend/.tmp-*/
+backend/tmp*/
 
 # env / secrets
 .env

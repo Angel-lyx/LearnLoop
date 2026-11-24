@@ -35,6 +35,9 @@ LEGACY_SETTING_TABLE = "setting_legacy"
 def init_db() -> None:
     from . import models  # noqa: F401  确保建表前模型已注册
 
+    # 部署时 DATA_DIR 指向挂载卷，卷里可能还没有子目录；sqlite 不会自己建目录
+    settings.data_dir.mkdir(parents=True, exist_ok=True)
+    settings.uploads_dir.mkdir(parents=True, exist_ok=True)
     SQLModel.metadata.create_all(engine)
     migrate(engine)
 

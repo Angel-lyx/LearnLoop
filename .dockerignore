@@ -1,0 +1,16 @@
+.git
+.gitignore
+**/node_modules
+**/.pnpm-store
+frontend/dist
+backend/data
+backend/.venv
+backend/.tmp-c
+backend/.pytest_cache
+backend/__pycache__
+**/__pycache__
+**/*.pyc
+*.mp4
+*.log
+docs
+frontend/e2e/artifacts
