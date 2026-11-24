@@ -6,7 +6,7 @@ import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
-const DOC = "docs/product-design.md";
+const DOC = process.env.DOC || "docs/product-design.md";
 
 const REQUIRED_SECTIONS = [
   "产品定位",
@@ -26,6 +26,14 @@ const REQUIRED_SECTIONS = [
   "主要风险",
 ];
 
+// 关键能力必须在文档中被明确写出来，防止后续改稿时被删掉
+const REQUIRED_KEYWORDS = [
+  { kw: "橡皮擦", why: "批注需支持擦除" },
+  { kw: "非破坏性", why: "擦除/删除不得影响原始文档" },
+  { kw: "回收站", why: "删除需可恢复" },
+  { kw: "撤销", why: "误删需可撤销" },
+];
+
 const errors = [];
 
 function fail(msg) {
@@ -43,6 +51,11 @@ const text = readFileSync(abs, "utf8");
 // 2. 必填章节齐全
 for (const s of REQUIRED_SECTIONS) {
   if (!text.includes(s)) fail(`缺少章节：${s}`);
+}
+
+// 2.1 关键能力关键词齐全
+for (const { kw, why } of REQUIRED_KEYWORDS) {
+  if (!text.includes(kw)) fail(`缺少关键能力「${kw}」（${why}）`);
 }
 
 // 3. 标题层级从 h1 开始，且全篇只有一个一级标题
@@ -87,4 +100,4 @@ if (errors.length) {
   process.exit(1);
 }
 
-console.log(`PASS ${DOC}：章节 ${REQUIRED_SECTIONS.length}/${REQUIRED_SECTIONS.length}，链接 ${links.length}，代码块 ${fences / 2} 对`);
+console.log(`PASS ${DOC}：章节 ${REQUIRED_SECTIONS.length}/${REQUIRED_SECTIONS.length}，关键词 ${REQUIRED_KEYWORDS.length}/${REQUIRED_KEYWORDS.length}，链接 ${links.length}，代码块 ${fences / 2} 对`);
