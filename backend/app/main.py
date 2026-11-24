@@ -5,7 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from .config import settings
 from .db import init_db
-from .routers import health, subjects
+from .routers import health, materials, subjects
 
 
 def create_app(init_database: bool = True) -> FastAPI:
@@ -24,6 +24,7 @@ def create_app(init_database: bool = True) -> FastAPI:
     )
     app.include_router(health.router)
     app.include_router(subjects.router)
+    app.include_router(materials.router)
     return app
 
 

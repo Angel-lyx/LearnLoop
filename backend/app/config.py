@@ -11,15 +11,25 @@ class Settings(BaseSettings):
 
     app_name: str = "LearnLoop API"
     database_url: str = f"sqlite:///{(DATA_DIR / 'learnloop.db').as_posix()}"
+    data_dir: Path = DATA_DIR
     cors_origins: list[str] = [
         "http://localhost:5173",
         "http://127.0.0.1:5173",
     ]
+    max_upload_mb: int = 50
     deepseek_api_key: str = ""
     deepseek_base_url: str = "https://api.deepseek.com"
     deepseek_model: str = "deepseek-flash"
 
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
+
+    @property
+    def uploads_dir(self) -> Path:
+        return self.data_dir / "uploads"
+
+    @property
+    def max_upload_bytes(self) -> int:
+        return self.max_upload_mb * 1024 * 1024
 
 
 settings = Settings()

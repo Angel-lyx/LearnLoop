@@ -24,3 +24,24 @@ class SubjectRead(BaseModel):
     archived: bool
     created_at: datetime
     updated_at: datetime
+
+
+class MaterialRead(BaseModel):
+    id: int
+    subject_id: int
+    title: str
+    filename: str
+    kind: str
+    size: int
+    page_count: int
+    created_at: datetime
+
+
+class AnnotationUpsert(BaseModel):
+    payload: str = Field(default="[]", max_length=2_000_000)
+
+
+class AnnotationRead(BaseModel):
+    page: int
+    payload: str
+    updated_at: datetime
