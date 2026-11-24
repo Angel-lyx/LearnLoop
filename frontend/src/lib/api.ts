@@ -1,5 +1,6 @@
 import type {
   AISettings,
+  AIPlan,
   Analysis,
   AnnotationPage,
   BonusItem,
@@ -105,6 +106,7 @@ export const examsApi = {
     api.post<Exam>(`/subjects/${subjectId}/exams`, payload),
   remove: (examId: number) => api.delete(`/exams/${examId}`),
   plan: (examId: number) => api.post<Task[]>(`/exams/${examId}/plan`, {}),
+  aiPlan: (examId: number) => api.post<AIPlan>(`/exams/${examId}/plan/ai`, {}),
 };
 
 export const tasksApi = {

@@ -81,6 +81,21 @@ export interface Task {
   due_date: string;
   done: boolean;
   source: string;
+  detail?: string;
+  resources?: { title: string; url: string }[];
+}
+
+export interface AIPlanDay {
+  date: string;
+  focus: string;
+  tasks: { title: string; detail: string; minutes: number }[];
+  resources: { title: string; url: string }[];
+}
+
+export interface AIPlan {
+  summary: string;
+  days: AIPlanDay[];
+  tasks: Task[];
 }
 
 export interface MindMapNode {

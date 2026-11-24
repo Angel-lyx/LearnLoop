@@ -79,6 +79,42 @@ def test_plan_has_minimum_three_tasks(client, subject):
     assert len(tasks) >= 3
 
 
+def test_ai_plan_searches_and_creates_tasks(client, subject, fake_llm):
+    exam = create_exam(client, subject["id"], days_ahead=5).json()
+
+    response = client.post(f"/api/exams/{exam['id']}/plan/ai")
+    assert response.status_code == 200
+    body = response.json()
+
+    assert body["summary"]
+    assert len(body["days"]) == 1
+    assert body["days"][0]["tasks"][0]["title"] == "复习极限定义"
+    assert len(body["tasks"]) == 1
+    assert body["tasks"][0]["detail"] == "整理 5 个典型例题"
+
+    # 只保留检索结果里真实存在的链接，模型编造的链接会被丢弃
+    urls = [res["url"] for res in body["days"][0]["resources"]]
+    assert urls == ["https://example.com/outline"]
+
+    # 确认确实调用了联网检索
+    assert any(kind == "search" for kind, _ in fake_llm.calls)
+
+    tasks = client.get("/api/tasks", params={"day": "2099-01-01"}).json()
+    assert len(tasks) == 1
+    assert tasks[0]["source"] == "ai"
+    assert tasks[0]["resources"][0]["url"] == "https://example.com/outline"
+
+
+def test_ai_plan_requires_key(client, subject):
+    exam = create_exam(client, subject["id"], days_ahead=5).json()
+    assert client.post(f"/api/exams/{exam['id']}/plan/ai").status_code == 428
+
+
+def test_ai_plan_rejects_past_exam(client, subject, fake_llm):
+    exam = create_exam(client, subject["id"], days_ahead=-2).json()
+    assert client.post(f"/api/exams/{exam['id']}/plan/ai").status_code == 400
+
+
 def test_past_exam_cannot_generate_plan(client, subject):
     exam = create_exam(client, subject["id"], days_ahead=-2).json()
     response = client.post(f"/api/exams/{exam['id']}/plan")

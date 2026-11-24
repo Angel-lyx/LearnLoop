@@ -48,7 +48,7 @@ async function main() {
   ok(true, "考试录入成功并显示倒计时");
 
   // 2. 生成复习计划
-  await page.getByRole("button", { name: "生成复习计划" }).click();
+  await page.getByRole("button", { name: "快速排期" }).click();
   await page.waitForSelector("text=已生成");
   ok(true, "复习计划生成成功");
 

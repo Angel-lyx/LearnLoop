@@ -84,15 +84,53 @@ class FakeLLM:
         }
         self.calls: list[tuple[str, str]] = []
 
+        from datetime import date, timedelta
+
+        tomorrow = (date.today() + timedelta(days=1)).isoformat()
+        self.search_results = [
+            {
+                "title": "高数期末复习提纲",
+                "url": "https://example.com/outline",
+                "summary": "极限、导数、积分的重点梳理",
+            },
+            {
+                "title": "高数历年真题",
+                "url": "https://example.com/papers",
+                "summary": "近五年期末真题与解析",
+            },
+        ]
+        self.plan_data = {
+            "summary": "先补基础再做真题，最后两天模拟",
+            "days": [
+                {
+                    "date": tomorrow,
+                    "focus": "极限",
+                    "tasks": [
+                        {"title": "复习极限定义", "detail": "整理 5 个典型例题", "minutes": 60}
+                    ],
+                    "resources": [
+                        {"title": "高数期末复习提纲", "url": "https://example.com/outline"},
+                        {"title": "伪造链接", "url": "https://evil.example.com/x"},
+                    ],
+                }
+            ],
+        }
+
     async def chat_json(self, system: str, user: str, image_urls=None):
         self.calls.append(("json", user))
         if "思维导图" in system:
             return self.map_data
+        if "备考规划师" in system:
+            return self.plan_data
         if "成绩单" in system:
             return self.courses_data
         if "综测" in system or "加分" in system:
             return self.rules_data
         return self.analysis
+
+    async def search(self, query: str, count: int = 5):
+        self.calls.append(("search", query))
+        return self.search_results[:count]
 
     async def chat_text(self, system: str, user: str, image_urls=None):
         self.calls.append(("text", user))

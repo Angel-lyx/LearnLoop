@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 
 import { examsApi } from "../lib/api";
 import { useTaskStore } from "../stores/taskStore";
-import type { Exam } from "../types";
+import type { Exam, Task } from "../types";
 
 function todayISO() {
   return new Date().toISOString().slice(0, 10);
@@ -86,10 +86,7 @@ export default function ReviewPage() {
                 {overdue.map((task) => (
                   <TaskRow
                     key={task.id}
-                    id={task.id}
-                    title={task.title}
-                    dueDate={task.due_date}
-                    done={task.done}
+                    task={task}
                     onToggle={() => void toggle(task.id, true)}
                     onRemove={() => void remove(task.id)}
                   />
@@ -109,10 +106,7 @@ export default function ReviewPage() {
                 {todays.map((task) => (
                   <TaskRow
                     key={task.id}
-                    id={task.id}
-                    title={task.title}
-                    dueDate={task.due_date}
-                    done={task.done}
+                    task={task}
                     onToggle={() => void toggle(task.id, !task.done)}
                     onRemove={() => void remove(task.id)}
                   />
@@ -151,39 +145,56 @@ export default function ReviewPage() {
 }
 
 function TaskRow({
-  title,
-  dueDate,
-  done,
+  task,
   onToggle,
   onRemove,
 }: {
-  id: number;
-  title: string;
-  dueDate: string;
-  done: boolean;
+  task: Task;
   onToggle: () => void;
   onRemove: () => void;
 }) {
   return (
-    <li className="card group flex items-center gap-3 px-4 py-3">
-      <input
-        type="checkbox"
-        checked={done}
-        onChange={onToggle}
-        className="h-4 w-4 rounded border-paper-300 accent-[var(--color-brand-500)]"
-      />
-      <span
-        className={`flex-1 text-sm ${done ? "text-ink-400 line-through" : "text-ink-800"}`}
-      >
-        {title}
-      </span>
-      <span className="text-xs text-ink-400">{dueDate}</span>
-      <button
-        onClick={onRemove}
-        className="text-xs text-ink-400 opacity-0 hover:text-red-500 group-hover:opacity-100"
-      >
-        删除
-      </button>
+    <li className="card px-4 py-3">
+      <div className="group flex items-center gap-3">
+        <input
+          type="checkbox"
+          checked={task.done}
+          onChange={onToggle}
+          className="h-4 w-4 rounded border-paper-300 accent-[var(--color-brand-500)]"
+        />
+        <span
+          className={`flex-1 text-sm ${
+            task.done ? "text-ink-400 line-through" : "text-ink-800"
+          }`}
+        >
+          {task.title}
+        </span>
+        <span className="text-xs text-ink-400">{task.due_date}</span>
+        <button
+          onClick={onRemove}
+          className="text-xs text-ink-400 opacity-0 hover:text-red-500 group-hover:opacity-100"
+        >
+          删除
+        </button>
+      </div>
+
+      {task.detail && <p className="ml-7 mt-1 text-xs text-ink-500">{task.detail}</p>}
+
+      {task.resources && task.resources.length > 0 && (
+        <div className="ml-7 mt-1.5 flex flex-wrap gap-1.5">
+          {task.resources.map((res) => (
+            <a
+              key={res.url}
+              href={res.url}
+              target="_blank"
+              rel="noreferrer"
+              className="chip hover:border-brand-400 hover:text-brand-600"
+            >
+              🔗 {res.title || res.url}
+            </a>
+          ))}
+        </div>
+      )}
     </li>
   );
 }

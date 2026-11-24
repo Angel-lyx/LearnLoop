@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
 
+import { examsApi } from "../../lib/api";
+import type { AIPlan } from "../../types";
 import { useExamStore } from "../../stores/studyStore";
 import { useTaskStore } from "../../stores/taskStore";
 
@@ -13,6 +15,8 @@ export default function ExamPanel({ subjectId }: { subjectId: number }) {
   const [scope, setScope] = useState("");
   const [notice, setNotice] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [aiBusy, setAiBusy] = useState<number | null>(null);
+  const [aiPlan, setAiPlan] = useState<AIPlan | null>(null);
 
   useEffect(() => {
     void load(subjectId);
@@ -42,6 +46,22 @@ export default function ExamPanel({ subjectId }: { subjectId: number }) {
     if (count > 0) {
       setNotice(`已生成 ${count} 条复习任务，去「复习计划」查看每日安排`);
       await reloadTasks();
+    }
+  }
+
+  async function handleAiPlan(examId: number) {
+    setAiBusy(examId);
+    setNotice(null);
+    setAiPlan(null);
+    try {
+      const result = await examsApi.aiPlan(examId);
+      setAiPlan(result);
+      setNotice(`联网检索完成，已按 ${result.days.length} 天排好计划`);
+      await reloadTasks();
+    } catch (err) {
+      setNotice(err instanceof Error ? err.message : "生成失败");
+    } finally {
+      setAiBusy(null);
     }
   }
 
@@ -149,11 +169,18 @@ export default function ExamPanel({ subjectId }: { subjectId: number }) {
               </div>
               <div className="flex items-center gap-2 text-xs">
                 <button
+                  onClick={() => void handleAiPlan(exam.id)}
+                  disabled={aiBusy !== null || exam.days_left < 0}
+                  className="btn btn-primary !px-2.5 !py-1 text-xs"
+                >
+                  {aiBusy === exam.id ? "检索排期中…" : "AI 智能计划"}
+                </button>
+                <button
                   onClick={() => void handlePlan(exam.id)}
                   disabled={busy || exam.days_left < 0}
-                  className="btn btn-soft !px-2.5 !py-1 text-xs"
+                  className="btn btn-ghost !px-2.5 !py-1 text-xs"
                 >
-                  生成复习计划
+                  快速排期
                 </button>
                 <button
                   onClick={() => void remove(exam.id)}
@@ -165,6 +192,60 @@ export default function ExamPanel({ subjectId }: { subjectId: number }) {
             </li>
           ))}
         </ul>
+      )}
+
+      {aiPlan && (
+        <section className="card p-5">
+          <div className="flex items-center justify-between">
+            <h3 className="section-title">AI 定制计划</h3>
+            <button
+              onClick={() => setAiPlan(null)}
+              className="text-xs text-ink-400 hover:text-ink-700"
+            >
+              收起
+            </button>
+          </div>
+          <p className="mt-2 text-sm text-ink-700">{aiPlan.summary}</p>
+
+          <ol className="mt-4 space-y-3">
+            {aiPlan.days.map((day) => (
+              <li key={day.date} className="rounded-xl border border-paper-200 bg-white/70 p-3">
+                <div className="flex items-center gap-2 text-sm">
+                  <span className="rounded-md bg-brand-50 px-2 py-0.5 text-xs text-brand-600">
+                    {day.date}
+                  </span>
+                  {day.focus && <span className="font-medium text-ink-800">{day.focus}</span>}
+                </div>
+                <ul className="mt-2 space-y-1.5">
+                  {day.tasks.map((task, index) => (
+                    <li key={index} className="text-sm text-ink-700">
+                      <span className="text-ink-900">· {task.title}</span>
+                      <span className="ml-2 text-xs text-ink-400">{task.minutes} 分钟</span>
+                      {task.detail && (
+                        <p className="ml-3 text-xs text-ink-500">{task.detail}</p>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+                {day.resources.length > 0 && (
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    {day.resources.map((res) => (
+                      <a
+                        key={res.url}
+                        href={res.url}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="chip hover:border-brand-400 hover:text-brand-600"
+                      >
+                        🔗 {res.title || res.url}
+                      </a>
+                    ))}
+                  </div>
+                )}
+              </li>
+            ))}
+          </ol>
+        </section>
       )}
     </div>
   );
