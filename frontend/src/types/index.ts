@@ -62,3 +62,38 @@ export interface AISettings {
   base_url: string;
   source: "database" | "environment" | "none";
 }
+
+export interface Exam {
+  id: number;
+  subject_id: number;
+  title: string;
+  exam_date: string;
+  scope: string;
+  created_at: string;
+  days_left: number;
+}
+
+export interface Task {
+  id: number;
+  subject_id: number | null;
+  exam_id: number | null;
+  title: string;
+  due_date: string;
+  done: boolean;
+  source: string;
+}
+
+export interface MindMapNode {
+  id: string;
+  topic: string;
+  children?: MindMapNode[];
+}
+
+export interface MindMapDoc {
+  id: number;
+  subject_id: number;
+  title: string;
+  data: { nodeData: MindMapNode };
+  created_at: string;
+  updated_at: string;
+}

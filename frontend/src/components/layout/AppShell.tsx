@@ -54,7 +54,7 @@ export default function AppShell() {
         <div className="mt-auto rounded-lg bg-paper-100 px-3 py-2.5 text-xs leading-relaxed text-ink-400">
           数据存在本机
           <br />
-          M1 · 学科与资料批注
+          M3 · 学习闭环已打通
         </div>
       </aside>
 

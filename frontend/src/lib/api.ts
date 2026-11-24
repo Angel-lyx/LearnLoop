@@ -2,9 +2,12 @@ import type {
   AISettings,
   Analysis,
   AnnotationPage,
+  Exam,
   Material,
+  MindMapDoc,
   Mistake,
   Subject,
+  Task,
 } from "../types";
 
 export class ApiError extends Error {
@@ -88,6 +91,37 @@ export const aiApi = {
   analyze: (question: string, answer = "") =>
     api.post<Analysis>("/ai/analyze", { question, answer }),
   transcribe: (file: File) => postFile<{ text: string }>("/ai/transcribe", file),
+};
+
+export const examsApi = {
+  all: () => api.get<Exam[]>("/exams"),
+  list: (subjectId: number) => api.get<Exam[]>(`/subjects/${subjectId}/exams`),
+  create: (subjectId: number, payload: { title: string; exam_date: string; scope: string }) =>
+    api.post<Exam>(`/subjects/${subjectId}/exams`, payload),
+  remove: (examId: number) => api.delete(`/exams/${examId}`),
+  plan: (examId: number) => api.post<Task[]>(`/exams/${examId}/plan`, {}),
+};
+
+export const tasksApi = {
+  today: (day?: string) =>
+    api.get<Task[]>(`/tasks${day ? `?day=${encodeURIComponent(day)}` : ""}`),
+  create: (payload: { title: string; due_date: string; subject_id?: number }) =>
+    api.post<Task>("/tasks", payload),
+  update: (taskId: number, payload: { done?: boolean; title?: string }) =>
+    api.patch<Task>(`/tasks/${taskId}`, payload),
+  remove: (taskId: number) => api.delete(`/tasks/${taskId}`),
+};
+
+export const mapsApi = {
+  list: (subjectId: number) => api.get<MindMapDoc[]>(`/subjects/${subjectId}/maps`),
+  create: (subjectId: number, title: string) =>
+    api.post<MindMapDoc>(`/subjects/${subjectId}/maps`, { title }),
+  get: (mapId: number) => api.get<MindMapDoc>(`/maps/${mapId}`),
+  update: (mapId: number, payload: { title?: string; data?: unknown }) =>
+    api.patch<MindMapDoc>(`/maps/${mapId}`, payload),
+  remove: (mapId: number) => api.delete(`/maps/${mapId}`),
+  generate: (subjectId: number) =>
+    api.post<MindMapDoc>(`/subjects/${subjectId}/maps/generate`, {}),
 };
 
 export const settingsApi = {

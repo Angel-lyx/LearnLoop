@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 
+import ExamPanel from "../components/exams/ExamPanel";
+import MindMapPanel from "../components/maps/MindMapPanel";
 import MistakePanel from "../components/mistakes/MistakePanel";
 import { formatBytes } from "../lib/annotations";
 import { useMaterialStore } from "../stores/materialStore";
@@ -13,7 +15,7 @@ const KIND_LABEL: Record<string, string> = {
   pptx: "PPT",
 };
 
-type Tab = "materials" | "mistakes";
+type Tab = "materials" | "mistakes" | "maps" | "exams";
 
 export default function SubjectDetailPage() {
   const { id } = useParams();
@@ -49,6 +51,8 @@ export default function SubjectDetailPage() {
           [
             ["materials", "资料"],
             ["mistakes", "错题"],
+            ["maps", "导图"],
+            ["exams", "考试"],
           ] as const
         ).map(([value, label]) => (
           <button
@@ -67,8 +71,12 @@ export default function SubjectDetailPage() {
 
       {tab === "materials" ? (
         <MaterialPanel subjectId={subjectId} />
-      ) : (
+      ) : tab === "mistakes" ? (
         <MistakePanel subjectId={subjectId} />
+      ) : tab === "maps" ? (
+        <MindMapPanel subjectId={subjectId} />
+      ) : (
+        <ExamPanel subjectId={subjectId} />
       )}
     </div>
   );
