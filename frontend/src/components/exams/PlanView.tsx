@@ -17,6 +17,8 @@ export default function PlanView({
   onClose: () => void;
 }) {
   const coverage = sortCoverage(plan.coverage);
+  const [showAllCoverage, setShowAllCoverage] = useState(false);
+  const visibleCoverage = showAllCoverage ? coverage : coverage.slice(0, 8);
 
   return (
     <section className="card p-5">
@@ -53,9 +55,17 @@ export default function PlanView({
         >
           {plan.source_note || "已生成"}
         </span>
-        {coverage.map((item) => (
+        {visibleCoverage.map((item) => (
           <CoverageChip key={item.topic} item={item} />
         ))}
+        {coverage.length > visibleCoverage.length && (
+          <button
+            onClick={() => setShowAllCoverage(true)}
+            className="chip hover:border-brand-400 hover:text-brand-600"
+          >
+            +{coverage.length - visibleCoverage.length} 个专题
+          </button>
+        )}
       </div>
 
       <ol className="mt-4 space-y-2">

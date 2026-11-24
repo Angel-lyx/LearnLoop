@@ -54,7 +54,7 @@ Key 只存本机数据库，不会打包进前端，也不会进 git。
 backend/            FastAPI 服务
   app/routers/      学科、资料、错题、考试、任务、导图、保研、搜索、备份
   app/services/     LLM 客户端、计划排期、成绩计算
-  tests/            pytest（101 项）
+  tests/            pytest（108 项）
   data/             运行时 SQLite 与上传文件（不提交）
 frontend/           React 应用
   src/pages/        页面
@@ -68,7 +68,7 @@ scripts/            文档校验与转换脚本
 ## 测试
 
 ```bash
-cd backend  && .venv/Scripts/python.exe -m pytest     # 101 passed
+cd backend  && .venv/Scripts/python.exe -m pytest     # 108 passed
 cd frontend && pnpm test                              # 38 passed
 cd frontend && pnpm build                             # 类型检查 + 打包
 node scripts/check-docs.mjs                           # 文档结构校验

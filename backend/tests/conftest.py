@@ -128,7 +128,7 @@ class FakeLLM:
         }
 
     async def chat_json(
-        self, system: str, user: str, image_urls=None, max_tokens=4096, timeout=120
+        self, system: str, user: str, image_urls=None, max_tokens=8192, timeout=120
     ):
         self.calls.append(("json", user))
         if "思维导图" in system:

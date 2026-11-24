@@ -45,18 +45,14 @@ export default function ExamPanel({ subjectId }: { subjectId: number }) {
     const next = items.find((exam) => exam.days_left >= 0);
     if (!next) return;
     autoLoaded.current = subjectId;
-    let cancelled = false;
     examsApi
       .savedAiPlan(next.id)
       .then((saved) => {
-        if (cancelled || saved.days.length === 0) return;
+        if (saved.days.length === 0) return;
         setAiPlan(saved);
         setAiExam({ id: next.id, title: next.title });
       })
       .catch(() => undefined);
-    return () => {
-      cancelled = true;
-    };
   }, [items, subjectId]);
 
   async function handleSubmit(event: React.FormEvent) {

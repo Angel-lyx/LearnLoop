@@ -1,4 +1,5 @@
 import json
+import re
 from typing import Any
 
 import httpx
@@ -78,6 +79,24 @@ PLAN_SYSTEM = """你是备考规划师，任务是把「考试范围 + 学生已
 - 只输出 JSON，不要解释"""
 
 
+def decode_json(text: str) -> dict[str, Any]:
+    """解析模型返回的 JSON：兼容 ```json 围栏、前后解释文字，顶层必须是对象。"""
+    cleaned = text.strip()
+    if cleaned.startswith("```"):
+        cleaned = re.sub(r"^```[a-zA-Z]*\s*", "", cleaned)
+        cleaned = re.sub(r"\s*```$", "", cleaned)
+    try:
+        parsed = json.loads(cleaned)
+    except json.JSONDecodeError:
+        start, end = cleaned.find("{"), cleaned.rfind("}")
+        if start == -1 or end <= start:
+            raise
+        parsed = json.loads(cleaned[start : end + 1])
+    if not isinstance(parsed, dict):
+        raise ValueError("顶层不是 JSON 对象")
+    return parsed
+
+
 class LLMError(Exception):
     def __init__(self, message: str, status: int = 502) -> None:
         super().__init__(message)
@@ -126,7 +145,7 @@ class LLMClient:
         system: str,
         user: str,
         image_urls: list[str] | None = None,
-        max_tokens: int = 4096,
+        max_tokens: int = 8192,
         timeout: float = 120,
     ) -> dict[str, Any]:
         content: list[dict[str, Any]] = [{"type": "text", "text": user}]
@@ -142,12 +161,21 @@ class LLMClient:
             "response_format": {"type": "json_object"},
             "temperature": 0.3,
             "max_tokens": max_tokens,
+            # 结构化输出不需要思维链：reasoning 会吃掉输出预算，长计划会因此被截断
+            "thinking": {"type": "disabled"},
         }
         data = await self._request("/chat/completions", json_body=payload, timeout=timeout)
         try:
-            raw = data["choices"][0]["message"]["content"]
-            return json.loads(raw)
-        except (KeyError, IndexError, json.JSONDecodeError) as exc:
+            choice = data["choices"][0]
+            raw = str(choice["message"].get("content") or "")
+        except (KeyError, IndexError, TypeError) as exc:
+            raise LLMError("大模型没有返回内容", 502) from exc
+
+        if choice.get("finish_reason") == "length":
+            raise LLMError("大模型输出被截断（内容太长），请缩短范围后重试", 502)
+        try:
+            return decode_json(raw)
+        except ValueError as exc:
             raise LLMError("大模型没有返回可解析的 JSON", 502) from exc
 
     async def chat_text(

@@ -446,9 +446,9 @@ async def generate_ai_plan(
         "请先拆解考试范围并标注考频，再按「补基础 → 专项突破 → 模拟回顾」排期。"
     )
     try:
-        # 长周期计划（几十天）输出较长，给足超时与 token 预算
+        # 38 天左右的计划实测约 8k token（已关闭思维链），预算留一倍余量
         raw = await llm.chat_json(
-            PLAN_SYSTEM, prompt, max_tokens=8192, timeout=240
+            PLAN_SYSTEM, prompt, max_tokens=16384, timeout=240
         )
     except LLMError as exc:
         raise HTTPException(exc.status, exc.message) from exc
