@@ -41,3 +41,27 @@ class Annotation(SQLModel, table=True):
     page: int = Field(ge=1)
     payload: str = Field(default="[]")
     updated_at: datetime = Field(default_factory=utcnow)
+
+
+class Setting(SQLModel, table=True):
+    """本地键值配置，例如用户填写的 API Key。"""
+
+    key: str = Field(primary_key=True, max_length=64)
+    value: str = Field(default="", max_length=500)
+    updated_at: datetime = Field(default_factory=utcnow)
+
+
+class Mistake(SQLModel, table=True):
+    """错题。AI 生成的分析与变式题以 JSON 文本保存，便于前端直接渲染。"""
+
+    id: int | None = Field(default=None, primary_key=True)
+    subject_id: int = Field(index=True, foreign_key="subject.id")
+    question: str = Field(default="")
+    answer: str = Field(default="")
+    error_analysis: str = Field(default="")
+    solution: str = Field(default="")
+    knowledge_points: str = Field(default="[]")  # JSON array
+    variants: str = Field(default="[]")  # JSON array of {question, answer}
+    status: str = Field(default="unmastered", max_length=16)
+    created_at: datetime = Field(default_factory=utcnow)
+    updated_at: datetime = Field(default_factory=utcnow)

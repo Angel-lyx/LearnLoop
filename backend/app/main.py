@@ -5,7 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from .config import settings
 from .db import init_db
-from .routers import health, materials, subjects
+from .routers import ai, health, materials, mistakes, settings as settings_router, subjects
 
 
 def create_app(init_database: bool = True) -> FastAPI:
@@ -15,7 +15,7 @@ def create_app(init_database: bool = True) -> FastAPI:
             init_db()
         yield
 
-    app = FastAPI(title=settings.app_name, version="0.1.0", lifespan=lifespan)
+    app = FastAPI(title=settings.app_name, version="0.2.0", lifespan=lifespan)
     app.add_middleware(
         CORSMiddleware,
         allow_origins=settings.cors_origins,
@@ -25,6 +25,9 @@ def create_app(init_database: bool = True) -> FastAPI:
     app.include_router(health.router)
     app.include_router(subjects.router)
     app.include_router(materials.router)
+    app.include_router(settings_router.router)
+    app.include_router(ai.router)
+    app.include_router(mistakes.router)
     return app
 
 

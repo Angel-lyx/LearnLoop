@@ -37,3 +37,45 @@ def subject_fixture(client: TestClient) -> dict:
     response = client.post("/api/subjects", json={"name": "高等数学"})
     assert response.status_code == 201
     return response.json()
+
+
+class FakeLLM:
+    """测试用替身：不发起真实网络请求。"""
+
+    def __init__(self) -> None:
+        self.analysis = {
+            "error_analysis": "把极限存在和连续混淆了",
+            "solution": "先判断左右极限是否相等，再比较函数值",
+            "knowledge_points": ["极限", "连续性"],
+            "variants": [
+                {"question": "变式题 A", "answer": "答案 A"},
+                {"question": "变式题 B", "answer": "答案 B"},
+            ],
+        }
+        self.transcribed = "1. 求极限 lim(x->0) sin(x)/x"
+        self.calls: list[tuple[str, str]] = []
+
+    async def chat_json(self, system: str, user: str, image_urls=None):
+        self.calls.append(("json", user))
+        return self.analysis
+
+    async def chat_text(self, system: str, user: str, image_urls=None):
+        self.calls.append(("text", user))
+        return self.transcribed
+
+    async def ocr(self, filename: str, content: bytes) -> str:
+        self.calls.append(("ocr", filename))
+        return self.transcribed
+
+    async def ping(self) -> bool:
+        self.calls.append(("ping", ""))
+        return True
+
+
+@pytest.fixture(name="fake_llm")
+def fake_llm_fixture(client: TestClient) -> FakeLLM:
+    from app.services.deps import get_llm
+
+    fake = FakeLLM()
+    client.app.dependency_overrides[get_llm] = lambda: fake
+    return fake
