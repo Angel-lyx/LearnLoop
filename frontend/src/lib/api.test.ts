@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { ApiError, api } from "./api";
+import { ApiError, api, materialsApi } from "./api";
 
 function mockFetch(impl: (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>) {
   const fn = vi.fn(impl);
@@ -65,5 +65,39 @@ describe("api 请求封装", () => {
   it("204 响应返回 undefined 而不是解析 JSON", async () => {
     mockFetch(async () => new Response(null, { status: 204 }));
     await expect(api.delete("/subjects/1")).resolves.toBeUndefined();
+  });
+});
+
+describe("资料上传", () => {
+  it("用 FormData 提交且不设置 JSON 头", async () => {
+    const fetchMock = mockFetch(
+      async () => new Response(JSON.stringify({ id: 9, kind: "pdf" }), { status: 201 }),
+    );
+
+    const file = new File(["%PDF-1.4"], "真题.pdf", { type: "application/pdf" });
+    const created = await materialsApi.upload(3, file);
+
+    expect(created).toEqual({ id: 9, kind: "pdf" });
+    const [url, init] = fetchMock.mock.calls[0];
+    expect(url).toBe("/api/subjects/3/materials");
+    expect(init?.method).toBe("POST");
+    expect(init?.body).toBeInstanceOf(FormData);
+    expect(init?.headers).toBeUndefined();
+    expect((init?.body as FormData).get("file")).toBeInstanceOf(File);
+  });
+
+  it("上传失败会抛出 ApiError", async () => {
+    mockFetch(
+      async () =>
+        new Response(JSON.stringify({ detail: "不支持的文件类型：.exe" }), {
+          status: 400,
+        }),
+    );
+
+    const file = new File(["MZ"], "virus.exe");
+    await expect(materialsApi.upload(3, file)).rejects.toMatchObject({
+      status: 400,
+      message: "不支持的文件类型：.exe",
+    });
   });
 });

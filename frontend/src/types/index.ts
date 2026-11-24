@@ -12,3 +12,20 @@ export interface SubjectInput {
   name: string;
   color: string;
 }
+
+export interface Material {
+  id: number;
+  subject_id: number;
+  title: string;
+  filename: string;
+  kind: string;
+  size: number;
+  page_count: number;
+  created_at: string;
+}
+
+export interface AnnotationPage {
+  page: number;
+  payload: string;
+  updated_at: string;
+}

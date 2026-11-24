@@ -1,4 +1,5 @@
 import { useState, type FormEvent } from "react";
+import { Link } from "react-router-dom";
 
 import { useSubjectStore } from "../stores/subjectStore";
 
@@ -94,13 +95,18 @@ export default function SubjectsPage() {
                 key={subject.id}
                 className="group flex items-center justify-between rounded-xl border border-paper-200 bg-white px-4 py-3"
               >
-                <div className="flex items-center gap-2.5">
+                <div className="flex min-w-0 items-center gap-2.5">
                   <span
                     aria-hidden
                     className="h-2.5 w-2.5 rounded-full"
                     style={{ backgroundColor: subject.color }}
                   />
-                  <span className="text-sm text-ink-800">{subject.name}</span>
+                  <Link
+                    to={`/subjects/${subject.id}`}
+                    className="truncate text-sm text-ink-800 hover:text-brand-600"
+                  >
+                    {subject.name}
+                  </Link>
                 </div>
                 <button
                   onClick={() => void remove(subject.id)}
