@@ -53,10 +53,19 @@ class FakeLLM:
             ],
         }
         self.transcribed = "1. 求极限 lim(x->0) sin(x)/x"
+        self.map_data = {
+            "topic": "高等数学",
+            "children": [
+                {"topic": "极限", "children": [{"topic": "等价无穷小"}]},
+                {"topic": "导数"},
+            ],
+        }
         self.calls: list[tuple[str, str]] = []
 
     async def chat_json(self, system: str, user: str, image_urls=None):
         self.calls.append(("json", user))
+        if "思维导图" in system:
+            return self.map_data
         return self.analysis
 
     async def chat_text(self, system: str, user: str, image_urls=None):

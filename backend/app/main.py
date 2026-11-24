@@ -5,7 +5,17 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from .config import settings
 from .db import init_db
-from .routers import ai, health, materials, mistakes, settings as settings_router, subjects
+from .routers import (
+    ai,
+    exams,
+    health,
+    maps,
+    materials,
+    mistakes,
+    settings as settings_router,
+    subjects,
+    tasks,
+)
 
 
 def create_app(init_database: bool = True) -> FastAPI:
@@ -28,6 +38,9 @@ def create_app(init_database: bool = True) -> FastAPI:
     app.include_router(settings_router.router)
     app.include_router(ai.router)
     app.include_router(mistakes.router)
+    app.include_router(exams.router)
+    app.include_router(tasks.router)
+    app.include_router(maps.router)
     return app
 
 

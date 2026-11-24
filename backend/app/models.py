@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 
 from sqlmodel import Field, SQLModel
 
@@ -63,5 +63,40 @@ class Mistake(SQLModel, table=True):
     knowledge_points: str = Field(default="[]")  # JSON array
     variants: str = Field(default="[]")  # JSON array of {question, answer}
     status: str = Field(default="unmastered", max_length=16)
+    created_at: datetime = Field(default_factory=utcnow)
+    updated_at: datetime = Field(default_factory=utcnow)
+
+
+class Exam(SQLModel, table=True):
+    """考试。复习计划以它为中心倒排。"""
+
+    id: int | None = Field(default=None, primary_key=True)
+    subject_id: int = Field(index=True, foreign_key="subject.id")
+    title: str = Field(max_length=120)
+    exam_date: date
+    scope: str = Field(default="", max_length=2000)
+    created_at: datetime = Field(default_factory=utcnow)
+
+
+class Task(SQLModel, table=True):
+    """每日任务。source=plan 由复习计划生成，manual 为手动添加。"""
+
+    id: int | None = Field(default=None, primary_key=True)
+    subject_id: int | None = Field(default=None, index=True, foreign_key="subject.id")
+    exam_id: int | None = Field(default=None, index=True, foreign_key="exam.id")
+    title: str = Field(max_length=200)
+    due_date: date = Field(index=True)
+    done: bool = Field(default=False)
+    source: str = Field(default="plan", max_length=16)
+    created_at: datetime = Field(default_factory=utcnow)
+
+
+class MindMap(SQLModel, table=True):
+    """思维导图。data 存 mind-elixir 的节点树 JSON。"""
+
+    id: int | None = Field(default=None, primary_key=True)
+    subject_id: int = Field(index=True, foreign_key="subject.id")
+    title: str = Field(max_length=120)
+    data: str = Field(default="{}")
     created_at: datetime = Field(default_factory=utcnow)
     updated_at: datetime = Field(default_factory=utcnow)

@@ -24,6 +24,11 @@ TRANSCRIBE_SYSTEM = """你负责把图片里的题目准确地转写成文字。
 
 EXTRACT_SYSTEM = """你负责把文档内容整理成结构化数据，严格输出 JSON，不要多余文字。"""
 
+MAP_SYSTEM = """你是课程助教，负责把学科内容整理成思维导图。
+严格输出 JSON，结构如下：
+{"topic": "根主题", "children": [{"topic": "一级分支", "children": [{"topic": "二级分支"}]}]}
+最多三层，节点文字不超过 20 字。只输出 JSON，不要解释。"""
+
 
 class LLMError(Exception):
     def __init__(self, message: str, status: int = 502) -> None:
