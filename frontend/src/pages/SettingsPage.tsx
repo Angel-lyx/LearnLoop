@@ -1,9 +1,13 @@
 import { useEffect, useRef, useState } from "react";
 
-import { backupApi, settingsApi } from "../lib/api";
+import { authApi, backupApi, settingsApi } from "../lib/api";
+import { useAuthStore } from "../stores/authStore";
 import type { AISettings } from "../types";
 
 export default function SettingsPage() {
+  const user = useAuthStore((state) => state.user);
+  const logout = useAuthStore((state) => state.logout);
+
   const [settings, setSettings] = useState<AISettings | null>(null);
   const [apiKey, setApiKey] = useState("");
   const [busy, setBusy] = useState<"idle" | "save" | "test" | "clear">("idle");
@@ -13,10 +17,18 @@ export default function SettingsPage() {
   const importRef = useRef<HTMLInputElement>(null);
   const [importing, setImporting] = useState(false);
 
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [passwordBusy, setPasswordBusy] = useState(false);
+  const [passwordMessage, setPasswordMessage] = useState<
+    { kind: "ok" | "error"; text: string } | null
+  >(null);
+
   async function handleImport(event: React.ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
     if (!file) return;
-    if (!window.confirm("导入会覆盖当前所有数据，确定继续？")) {
+    if (!window.confirm("导入会覆盖当前账号的全部数据，确定继续？")) {
       event.target.value = "";
       return;
     }
@@ -57,7 +69,7 @@ export default function SettingsPage() {
       const next = await settingsApi.saveKey(apiKey.trim());
       setSettings(next);
       setApiKey("");
-      setMessage({ kind: "ok", text: "已保存到本机数据库，不会上传" });
+      setMessage({ kind: "ok", text: "已保存到你的账号下，只有你能用" });
     } catch (error) {
       setMessage({
         kind: "error",
@@ -89,7 +101,7 @@ export default function SettingsPage() {
     setMessage(null);
     try {
       setSettings(await settingsApi.clearKey());
-      setMessage({ kind: "ok", text: "已清除本机保存的 Key" });
+      setMessage({ kind: "ok", text: "已清除保存的 Key" });
     } catch (error) {
       setMessage({
         kind: "error",
@@ -100,11 +112,41 @@ export default function SettingsPage() {
     }
   }
 
+  async function handleChangePassword() {
+    setPasswordMessage(null);
+    if (newPassword.length < 8) {
+      setPasswordMessage({ kind: "error", text: "新密码至少 8 位" });
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      setPasswordMessage({ kind: "error", text: "两次输入的新密码不一致" });
+      return;
+    }
+    setPasswordBusy(true);
+    try {
+      await authApi.changePassword(currentPassword, newPassword);
+      setCurrentPassword("");
+      setNewPassword("");
+      setConfirmPassword("");
+      setPasswordMessage({
+        kind: "ok",
+        text: "密码已更新，其他设备上的登录已失效",
+      });
+    } catch (error) {
+      setPasswordMessage({
+        kind: "error",
+        text: error instanceof Error ? error.message : "修改失败",
+      });
+    } finally {
+      setPasswordBusy(false);
+    }
+  }
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       <header>
         <h1 className="page-title">设置</h1>
-        <p className="muted mt-1.5">大模型密钥与数据管理</p>
+        <p className="muted mt-1.5">账号、大模型密钥与数据管理</p>
       </header>
 
       {message && (
@@ -116,6 +158,74 @@ export default function SettingsPage() {
           {message.text}
         </div>
       )}
+
+      <section className="card p-5">
+        <h2 className="text-sm font-medium text-ink-950">账号</h2>
+        <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
+          <div className="text-sm text-ink-700">
+            👤 <span className="font-medium">{user?.username ?? "—"}</span>
+          </div>
+          <button
+            onClick={() => void logout()}
+            className="rounded-lg border border-paper-200 px-3 py-1.5 text-xs text-ink-600 hover:bg-paper-50"
+          >
+            退出登录
+          </button>
+        </div>
+        <p className="mt-1 text-xs text-ink-400">
+          你的学科、资料、错题与成绩都只属于这个账号，其他账号看不到
+        </p>
+
+        <details className="mt-4 border-t border-paper-200 pt-3">
+          <summary className="cursor-pointer text-xs text-ink-500 select-none">
+            修改密码
+          </summary>
+          <div className="mt-3 grid gap-2 sm:grid-cols-3">
+            <input
+              type="password"
+              value={currentPassword}
+              onChange={(event) => setCurrentPassword(event.target.value)}
+              placeholder="当前密码"
+              autoComplete="current-password"
+              className="input text-sm"
+            />
+            <input
+              type="password"
+              value={newPassword}
+              onChange={(event) => setNewPassword(event.target.value)}
+              placeholder="新密码（至少 8 位）"
+              autoComplete="new-password"
+              className="input text-sm"
+            />
+            <input
+              type="password"
+              value={confirmPassword}
+              onChange={(event) => setConfirmPassword(event.target.value)}
+              placeholder="确认新密码"
+              autoComplete="new-password"
+              className="input text-sm"
+            />
+          </div>
+          <div className="mt-2 flex flex-wrap items-center gap-2">
+            <button
+              onClick={() => void handleChangePassword()}
+              disabled={passwordBusy}
+              className="rounded-lg bg-brand-500 px-4 py-2 text-sm font-medium text-white hover:bg-brand-600 disabled:opacity-50"
+            >
+              {passwordBusy ? "提交中…" : "更新密码"}
+            </button>
+            {passwordMessage && (
+              <span
+                className={`text-xs ${
+                  passwordMessage.kind === "ok" ? "text-emerald-600" : "text-red-600"
+                }`}
+              >
+                {passwordMessage.text}
+              </span>
+            )}
+          </div>
+        </details>
+      </section>
 
       <section className="card p-5">
         <div className="flex items-center justify-between">
@@ -131,8 +241,8 @@ export default function SettingsPage() {
           </span>
         </div>
         <p className="mt-1 text-xs text-ink-400">
-          只保存在本机数据库（
-          {settings?.source === "environment" ? "当前来自环境变量" : "backend/data"}），
+          只保存在服务器上属于你的那条记录（
+          {settings?.source === "environment" ? "当前来自环境变量" : "数据库"}），
           不会打包进前端，也不会进 git
         </p>
 
@@ -175,7 +285,7 @@ export default function SettingsPage() {
           </div>
           <div>
             <dt className="text-ink-400">接口地址</dt>
-            <dd className="mt-0.5 text-ink-700">{settings?.base_url ?? "—"}</dd>
+            <dd className="mt-0.5 break-all text-ink-700">{settings?.base_url ?? "—"}</dd>
           </div>
         </dl>
       </section>
@@ -183,7 +293,8 @@ export default function SettingsPage() {
       <section className="card p-5">
         <h2 className="text-sm font-medium text-ink-950">数据备份</h2>
         <p className="mt-1 text-xs text-ink-400">
-          导出包含数据库与所有上传文件的压缩包；导入会覆盖当前数据，请先在导出里留一份
+          导出的是你这个账号的 zip（资料文件 + 全部记录）；导入会覆盖当前账号的数据，
+          其他账号不受影响。换服务器时用它搬家。
         </p>
         <div className="mt-3 flex flex-wrap items-center gap-2">
           <a
@@ -206,7 +317,7 @@ export default function SettingsPage() {
           >
             {importing ? "导入中…" : "导入备份"}
           </button>
-          <span className="text-xs text-ink-400">覆盖式恢复，导入后页面会自动刷新</span>
+          <span className="text-xs text-ink-400">导入后页面会自动刷新</span>
         </div>
       </section>
     </div>

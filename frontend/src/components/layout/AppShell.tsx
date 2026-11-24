@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
 
 import MusicPlayer from "../player/MusicPlayer";
+import { useAuthStore } from "../../stores/authStore";
 import { useSubjectStore } from "../../stores/subjectStore";
 
 const navItems = [
@@ -12,10 +13,45 @@ const navItems = [
   { to: "/settings", label: "设置", icon: "⚙️" },
 ];
 
+const MOBILE_LABEL: Record<string, string> = {
+  主页: "主页",
+  学科: "学科",
+  复习计划: "复习",
+  保研: "保研",
+  设置: "设置",
+};
+
+function BrandMark() {
+  return (
+    <div className="flex items-center gap-2.5">
+      <span
+        className="flex h-9 w-9 items-center justify-center rounded-xl text-base font-bold text-white"
+        style={{
+          background: "linear-gradient(145deg,#4a6fa5,#6c5a9e)",
+          boxShadow:
+            "inset 0 1px 0 rgba(255,255,255,.4), 0 10px 22px -12px rgba(74,111,165,.9)",
+        }}
+        aria-hidden
+      >
+        L
+      </span>
+      <div>
+        <div className="text-[15px] font-bold tracking-tight text-ink-950">
+          Learn<span className="text-brand-600">Loop</span>
+        </div>
+        <div className="text-[11px] text-ink-400">学习与保研规划</div>
+      </div>
+    </div>
+  );
+}
+
 export default function AppShell() {
   const load = useSubjectStore((state) => state.load);
+  const user = useAuthStore((state) => state.user);
+  const logout = useAuthStore((state) => state.logout);
   const navigate = useNavigate();
   const [keyword, setKeyword] = useState("");
+  const [searchOpen, setSearchOpen] = useState(false);
 
   useEffect(() => {
     void load();
@@ -25,35 +61,21 @@ export default function AppShell() {
     event.preventDefault();
     if (!keyword.trim()) return;
     navigate(`/search?q=${encodeURIComponent(keyword.trim())}`);
+    setSearchOpen(false);
   }
 
   return (
-    <div className="flex h-full min-h-screen">
+    <div className="flex min-h-screen">
+      {/* 桌面侧栏 */}
       <aside
-        className="sticky top-0 flex h-screen w-60 shrink-0 flex-col border-r border-paper-200 px-3 py-5 backdrop-blur-xl"
+        className="sticky top-0 hidden h-screen w-60 shrink-0 flex-col border-r border-paper-200 px-3 py-5 backdrop-blur-xl lg:flex"
         style={{
           background:
             "linear-gradient(180deg, rgba(251,250,246,.92) 0%, rgba(238,236,246,.9) 100%)",
         }}
       >
-        <div className="mb-6 flex items-center gap-2.5 px-1.5">
-          <span
-            className="flex h-9 w-9 items-center justify-center rounded-xl text-base font-bold text-white"
-            style={{
-              background: "linear-gradient(145deg,#4a6fa5,#6c5a9e)",
-              boxShadow:
-                "inset 0 1px 0 rgba(255,255,255,.4), 0 10px 22px -12px rgba(74,111,165,.9)",
-            }}
-            aria-hidden
-          >
-            L
-          </span>
-          <div>
-            <div className="text-[15px] font-bold tracking-tight text-ink-950">
-              Learn<span className="text-brand-600">Loop</span>
-            </div>
-            <div className="text-[11px] text-ink-400">学习与保研规划</div>
-          </div>
+        <div className="mb-6 px-1.5">
+          <BrandMark />
         </div>
 
         <form onSubmit={handleSearch} className="mb-4 px-0.5">
@@ -84,19 +106,89 @@ export default function AppShell() {
         </nav>
 
         <div className="mt-auto rounded-xl border border-white/60 bg-white/45 px-3 py-3 text-[11px] leading-relaxed text-ink-400 backdrop-blur">
-          <div className="flex items-center gap-1.5 text-ink-600">
-            <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-            数据存在本机
+          <div className="flex items-center justify-between gap-2">
+            <span className="truncate text-ink-700" title={user?.username}>
+              👤 {user?.username ?? "未登录"}
+            </span>
+            <button
+              onClick={() => void logout()}
+              className="shrink-0 text-ink-400 transition-colors hover:text-red-500"
+            >
+              退出
+            </button>
           </div>
           <div className="mt-1">学习 → 批注 → 错题 → 复习 → 保研</div>
         </div>
       </aside>
 
       <div className="flex min-w-0 flex-1 flex-col">
-        <main className="mx-auto w-full max-w-6xl flex-1 px-8 py-8">
+        {/* 手机顶栏 */}
+        <header
+          className="sticky top-0 z-30 border-b border-paper-200 backdrop-blur-xl lg:hidden"
+          style={{ background: "rgba(251,250,246,.94)" }}
+        >
+          <div className="flex items-center gap-2 px-4 py-2.5">
+            <BrandMark />
+            <div className="flex-1" />
+            <button
+              type="button"
+              onClick={() => setSearchOpen((value) => !value)}
+              aria-label="搜索"
+              aria-expanded={searchOpen}
+              className="flex h-9 w-9 items-center justify-center rounded-lg border border-paper-200 bg-white/70 text-ink-600"
+            >
+              🔍
+            </button>
+          </div>
+
+          {searchOpen && (
+            <form onSubmit={handleSearch} className="px-4 pb-2.5">
+              <input
+                autoFocus
+                value={keyword}
+                onChange={(event) => setKeyword(event.target.value)}
+                placeholder="搜索资料 / 错题 / 导图…"
+                className="input !py-2 text-sm"
+              />
+            </form>
+          )}
+        </header>
+
+        <main className="mx-auto w-full max-w-6xl flex-1 px-4 pb-24 pt-5 sm:px-6 lg:px-8 lg:pb-8 lg:pt-8">
           <Outlet />
         </main>
       </div>
+
+      {/* 手机底部导航 */}
+      <nav
+        className="fixed inset-x-0 bottom-0 z-30 border-t border-paper-200 backdrop-blur-xl lg:hidden"
+        style={{
+          background: "rgba(251,250,246,.96)",
+          paddingBottom: "env(safe-area-inset-bottom)",
+        }}
+      >
+        <div className="flex items-stretch">
+          {navItems.map((item) => (
+            <NavLink
+              key={item.to}
+              to={item.to}
+              end={item.end}
+              className={({ isActive }) =>
+                `flex flex-1 flex-col items-center gap-0.5 py-2 text-[10px] transition-colors ${
+                  isActive ? "text-brand-600" : "text-ink-500"
+                }`
+              }
+            >
+              <span aria-hidden className="text-[17px] leading-none">
+                {item.icon}
+              </span>
+              <span className="leading-none">
+                {MOBILE_LABEL[item.label] ?? item.label}
+              </span>
+            </NavLink>
+          ))}
+        </div>
+      </nav>
 
       <MusicPlayer />
     </div>

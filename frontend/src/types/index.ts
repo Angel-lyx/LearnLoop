@@ -1,3 +1,15 @@
+export interface AuthUser {
+  id: number;
+  username: string;
+  created_at: string;
+}
+
+export interface AuthState {
+  user: AuthUser | null;
+  registration_open: boolean;
+  needs_invite_code: boolean;
+}
+
 export interface Subject {
   id: number;
   name: string;

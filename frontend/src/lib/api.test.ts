@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { ApiError, api, materialsApi } from "./api";
+import { ApiError, api, materialsApi, setUnauthorizedHandler } from "./api";
 
 function mockFetch(impl: (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>) {
   const fn = vi.fn(impl);
@@ -10,6 +10,7 @@ function mockFetch(impl: (input: RequestInfo | URL, init?: RequestInit) => Promi
 
 afterEach(() => {
   vi.unstubAllGlobals();
+  setUnauthorizedHandler(null);
 });
 
 describe("api 请求封装", () => {
@@ -65,6 +66,49 @@ describe("api 请求封装", () => {
   it("204 响应返回 undefined 而不是解析 JSON", async () => {
     mockFetch(async () => new Response(null, { status: 204 }));
     await expect(api.delete("/subjects/1")).resolves.toBeUndefined();
+  });
+});
+
+describe("会话失效", () => {
+  it("业务接口返回 401 时通知上层退回登录页", async () => {
+    const handler = vi.fn();
+    setUnauthorizedHandler(handler);
+    mockFetch(
+      async () =>
+        new Response(JSON.stringify({ detail: "请先登录" }), { status: 401 }),
+    );
+
+    await expect(api.get("/subjects")).rejects.toBeInstanceOf(ApiError);
+    expect(handler).toHaveBeenCalledTimes(1);
+  });
+
+  it("登录接口的 401 是密码错误，不触发跳转", async () => {
+    const handler = vi.fn();
+    setUnauthorizedHandler(handler);
+    mockFetch(
+      async () =>
+        new Response(JSON.stringify({ detail: "用户名或密码不正确" }), {
+          status: 401,
+        }),
+    );
+
+    await expect(
+      api.post("/auth/login", { username: "tester", password: "wrong" }),
+    ).rejects.toBeInstanceOf(ApiError);
+    expect(handler).not.toHaveBeenCalled();
+  });
+
+  it("其他错误码不触发跳转", async () => {
+    const handler = vi.fn();
+    setUnauthorizedHandler(handler);
+    mockFetch(
+      async () => new Response(JSON.stringify({ detail: "重名" }), { status: 409 }),
+    );
+
+    await expect(api.post("/subjects", { name: "x" })).rejects.toBeInstanceOf(
+      ApiError,
+    );
+    expect(handler).not.toHaveBeenCalled();
   });
 });
 

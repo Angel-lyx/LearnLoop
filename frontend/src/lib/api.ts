@@ -1,8 +1,10 @@
 import type {
-  AISettings,
   AIPlan,
+  AISettings,
   Analysis,
   AnnotationPage,
+  AuthState,
+  AuthUser,
   BonusItem,
   Course,
   Dimension,
@@ -26,6 +28,18 @@ export class ApiError extends Error {
   }
 }
 
+// 会话过期时由 App 注册回调，把界面切回登录页
+let unauthorizedHandler: (() => void) | null = null;
+
+export function setUnauthorizedHandler(handler: (() => void) | null) {
+  unauthorizedHandler = handler;
+}
+
+function handleUnauthorized(path: string, status: number) {
+  // 登录/注册接口的 401 是「密码错误」，不是会话过期
+  if (status === 401 && !path.startsWith("/auth/")) unauthorizedHandler?.();
+}
+
 async function parseError(response: Response): Promise<ApiError> {
   let detail = response.statusText || "请求失败";
   try {
@@ -43,7 +57,10 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
     ...init,
   });
 
-  if (!response.ok) throw await parseError(response);
+  if (!response.ok) {
+    handleUnauthorized(path, response.status);
+    throw await parseError(response);
+  }
   if (response.status === 204) return undefined as T;
   return (await response.json()) as T;
 }
@@ -52,9 +69,32 @@ async function postFile<T>(path: string, file: File): Promise<T> {
   const form = new FormData();
   form.append("file", file);
   const response = await fetch(`/api${path}`, { method: "POST", body: form });
-  if (!response.ok) throw await parseError(response);
+  if (!response.ok) {
+    handleUnauthorized(path, response.status);
+    throw await parseError(response);
+  }
   return (await response.json()) as T;
 }
+
+export const authApi = {
+  me: () => api.get<AuthState>("/auth/me"),
+  login: (username: string, password: string) =>
+    api.post<AuthState>("/auth/login", { username, password }),
+  register: (username: string, password: string, inviteCode = "") =>
+    api.post<AuthState>("/auth/register", {
+      username,
+      password,
+      invite_code: inviteCode,
+    }),
+  logout: () => api.post<{ ok: boolean }>("/auth/logout", {}),
+  changePassword: (currentPassword: string, newPassword: string) =>
+    api.post<AuthState>("/auth/password", {
+      current_password: currentPassword,
+      new_password: newPassword,
+    }),
+};
+
+export type { AuthUser };
 
 export const api = {
   get: <T>(path: string) => request<T>(path),

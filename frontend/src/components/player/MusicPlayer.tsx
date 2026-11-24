@@ -41,7 +41,7 @@ export default function MusicPlayer() {
   const current = tracks.find((track) => track.id === currentId);
 
   return (
-    <div className="fixed bottom-5 right-5 z-40">
+    <div className="fixed bottom-20 right-4 z-40 lg:bottom-5 lg:right-5">
       {open ? (
         <div className="card w-72 p-3 backdrop-blur" style={{ boxShadow: "var(--shadow-float)" }}>
           <div className="flex items-center justify-between">
