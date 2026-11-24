@@ -48,7 +48,7 @@ export default function ReviewPage() {
         </div>
       )}
 
-      <section className="rounded-xl border border-paper-200 bg-white p-4">
+      <section className="card p-4">
         <form onSubmit={handleAdd} className="flex gap-2">
           <input
             value={title}
@@ -69,7 +69,7 @@ export default function ReviewPage() {
       {loading && items.length === 0 ? (
         <p className="text-sm text-ink-400">加载中…</p>
       ) : items.length === 0 ? (
-        <div className="rounded-xl border border-dashed border-paper-200 bg-white px-6 py-14 text-center">
+        <div className="rounded-xl border border-dashed border-paper-300 bg-white/40 backdrop-blur-sm px-6 py-14 text-center">
           <p className="text-sm text-ink-600">今天没有任务</p>
           <p className="mt-1 text-xs text-ink-400">
             在学科里录入考试并生成复习计划，任务会自动出现在这里
@@ -101,7 +101,7 @@ export default function ReviewPage() {
           <div>
             <h2 className="mb-2 text-xs font-medium text-ink-400">今天</h2>
             {todays.length === 0 ? (
-              <p className="rounded-lg bg-white px-4 py-6 text-center text-sm text-ink-400">
+              <p className="rounded-lg bg-white/45 px-4 py-6 text-center text-sm text-ink-400">
                 今天的任务都完成了 🎉
               </p>
             ) : (
@@ -124,7 +124,7 @@ export default function ReviewPage() {
       )}
 
       {exams.length > 0 && (
-        <section className="rounded-xl border border-paper-200 bg-white p-4">
+        <section className="card p-4">
           <h2 className="text-sm font-medium text-ink-950">考试倒计时</h2>
           <ul className="mt-3 space-y-2">
             {exams.map((exam) => (

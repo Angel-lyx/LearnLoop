@@ -63,7 +63,7 @@ export default function MaterialViewerPage() {
       {material.kind === "pdf" ? (
         <Suspense
           fallback={
-            <div className="rounded-xl border border-paper-200 bg-white px-6 py-14 text-center text-sm text-ink-400">
+            <div className="card px-6 py-14 text-center text-sm text-ink-400">
               阅读器加载中…
             </div>
           }
@@ -71,14 +71,14 @@ export default function MaterialViewerPage() {
           <PdfAnnotator materialId={material.id} fileUrl={fileUrl} />
         </Suspense>
       ) : material.kind === "image" ? (
-        <div className="rounded-xl border border-paper-200 bg-white p-4">
+        <div className="card p-4">
           <img src={fileUrl} alt={material.title} className="mx-auto max-w-full" />
           <p className="mt-3 text-center text-xs text-ink-400">
             图片批注将在后续版本支持
           </p>
         </div>
       ) : (
-        <div className="rounded-xl border border-dashed border-paper-200 bg-white px-6 py-14 text-center">
+        <div className="rounded-xl border border-dashed border-paper-300 bg-white/40 backdrop-blur-sm px-6 py-14 text-center">
           <p className="text-sm text-ink-600">该格式暂不支持在线预览</p>
           <p className="mt-1 text-xs text-ink-400">
             可以下载原件查看，Word/PPT 转 PDF 预览会在后续版本支持

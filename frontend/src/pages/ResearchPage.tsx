@@ -219,7 +219,7 @@ function CoursesTab({
 
       <form
         onSubmit={handleAdd}
-        className="flex flex-wrap items-center gap-2 rounded-xl border border-paper-200 bg-white p-4"
+        className="flex flex-wrap items-center gap-2 card p-4"
       >
         <input
           value={name}
@@ -261,7 +261,7 @@ function CoursesTab({
         </button>
       </form>
 
-      <section className="rounded-xl border border-paper-200 bg-white p-4">
+      <section className="card p-4">
         <div className="flex flex-wrap items-center gap-2">
           <input
             ref={fileRef}
@@ -357,14 +357,14 @@ function CoursesTab({
       </section>
 
       {courses.length === 0 ? (
-        <div className="rounded-xl border border-dashed border-paper-200 bg-white px-6 py-12 text-center">
+        <div className="rounded-xl border border-dashed border-paper-300 bg-white/40 backdrop-blur-sm px-6 py-12 text-center">
           <p className="text-sm text-ink-600">还没有课程</p>
           <p className="mt-1 text-xs text-ink-400">
             先手动添加几门必修课，或者等 M4.1 的成绩单识别
           </p>
         </div>
       ) : (
-        <ul className="divide-y divide-paper-200 overflow-hidden rounded-xl border border-paper-200 bg-white">
+        <ul className="divide-y divide-paper-200 card overflow-hidden">
           {courses.map((course) => (
             <li key={course.id} className="group flex items-center gap-3 px-4 py-3">
               <span className="min-w-0 flex-1 truncate text-sm text-ink-800">
@@ -513,7 +513,7 @@ function ZongceTab({
         {DIMENSIONS.map((item) => (
           <div
             key={item}
-            className="rounded-xl border border-paper-200 bg-white p-3 text-center"
+            className="card p-3 text-center"
           >
             <div className="text-xs text-ink-400">{item}育</div>
             <div className="mt-1 text-xl font-semibold text-ink-950">
@@ -523,7 +523,7 @@ function ZongceTab({
         ))}
       </div>
 
-      <div className="rounded-xl border border-paper-200 bg-white p-4">
+      <div className="card p-4">
         <div className="flex items-center justify-between">
           <h2 className="text-sm font-medium text-ink-950">综测总分</h2>
           <span className="text-xl font-semibold text-brand-600">
@@ -534,7 +534,7 @@ function ZongceTab({
 
       <form
         onSubmit={handleAdd}
-        className="flex flex-wrap items-center gap-2 rounded-xl border border-paper-200 bg-white p-4"
+        className="flex flex-wrap items-center gap-2 card p-4"
       >
         <select
           value={dimension}
@@ -585,7 +585,7 @@ function ZongceTab({
       </form>
 
       {bonusDrafts && (
-        <div className="rounded-xl border border-paper-200 bg-white p-4">
+        <div className="card p-4">
           <p className="text-xs text-ink-500">
             从材料里识别到 {bonusDrafts.length} 条加分项，确认后写入：
           </p>
@@ -628,7 +628,7 @@ function ZongceTab({
       )}
 
       {bonus.length > 0 && (
-        <ul className="divide-y divide-paper-200 overflow-hidden rounded-xl border border-paper-200 bg-white">
+        <ul className="divide-y divide-paper-200 card overflow-hidden">
           {bonus.map((item) => (
             <li key={item.id} className="group flex items-center gap-3 px-4 py-2.5">
               <span className="w-6 text-center text-xs text-ink-500">{item.dimension}</span>
@@ -650,7 +650,7 @@ function ZongceTab({
         </ul>
       )}
 
-      <section className="rounded-xl border border-paper-200 bg-white p-4">
+      <section className="card p-4">
         <h2 className="text-sm font-medium text-ink-950">从细则生成加分项规则</h2>
         <p className="mt-1 text-xs text-ink-400">
           把学院细则粘贴进来，AI 会拆成「维度 + 名称 + 分值」，确认后写入规则库
@@ -695,7 +695,7 @@ function ZongceTab({
             <ul className="mt-2 space-y-1">
               {drafts.map((draft, index) => (
                 <li key={index} className="flex items-center gap-2 text-sm text-ink-800">
-                  <span className="rounded bg-white px-1.5 py-0.5 text-[11px] text-ink-600">
+                  <span className="rounded bg-white/60 px-1.5 py-0.5 text-[11px] text-ink-600">
                     {draft.dimension}
                   </span>
                   <span className="flex-1 truncate">{draft.name}</span>
@@ -771,7 +771,7 @@ function CompositeTab({
         <Stat label="保研综合成绩" value={composite.toFixed(2)} hint="按下方权重合成" />
       </div>
 
-      <section className="rounded-xl border border-paper-200 bg-white p-4">
+      <section className="card p-4">
         <h2 className="text-sm font-medium text-ink-950">权重设置</h2>
         <p className="mt-1 text-xs text-ink-400">
           按学校规则调整：必修占比 {Math.round(weight * 100)}% · 综测占比{" "}
@@ -795,7 +795,7 @@ function CompositeTab({
         </button>
       </section>
 
-      <section className="rounded-xl border border-paper-200 bg-white p-4">
+      <section className="card p-4">
         <h2 className="text-sm font-medium text-ink-950">目标对照</h2>
         <div className="mt-2 flex flex-wrap items-center gap-2 text-sm">
           <span className="text-ink-500">目标分数</span>

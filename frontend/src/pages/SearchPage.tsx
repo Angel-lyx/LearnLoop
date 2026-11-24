@@ -54,7 +54,7 @@ export default function SearchPage() {
           value={keyword}
           onChange={(event) => setKeyword(event.target.value)}
           placeholder="输入关键词，例如：极限"
-          className="min-w-0 flex-1 rounded-lg border border-paper-200 bg-white px-3 py-2 text-sm outline-none focus:border-brand-500"
+          className="min-w-0 flex-1 input text-sm outline-none focus:border-brand-500"
         />
         <button
           type="submit"
@@ -139,7 +139,7 @@ function Section({
 }) {
   if (count === 0) return null;
   return (
-    <section className="rounded-xl border border-paper-200 bg-white p-3">
+    <section className="card p-3">
       <h2 className="px-2 pb-1 text-xs font-medium text-ink-400">
         {title}（{count}）
       </h2>

@@ -16,7 +16,7 @@ const MindMapPage = lazy(() => import("./pages/MindMapPage"));
 
 function PageFallback() {
   return (
-    <div className="rounded-xl border border-paper-200 bg-white px-6 py-14 text-center text-sm text-ink-400">
+    <div className="card px-6 py-14 text-center text-sm text-ink-400">
       加载中…
     </div>
   );

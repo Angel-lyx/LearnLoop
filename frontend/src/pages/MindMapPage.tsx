@@ -114,7 +114,7 @@ export default function MindMapPage() {
         <div className="rounded-lg bg-red-50 px-4 py-2 text-sm text-red-600">{error}</div>
       )}
 
-      <div className="overflow-hidden rounded-xl border border-paper-200 bg-white">
+      <div className="card overflow-hidden">
         <div ref={containerRef} style={{ height: "70vh", width: "100%" }} />
       </div>
     </div>

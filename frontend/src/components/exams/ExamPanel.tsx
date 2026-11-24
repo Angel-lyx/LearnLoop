@@ -116,7 +116,7 @@ export default function ExamPanel({ subjectId }: { subjectId: number }) {
       {loading && items.length === 0 ? (
         <p className="text-sm text-ink-400">加载中…</p>
       ) : items.length === 0 ? (
-        <div className="rounded-xl border border-dashed border-paper-200 bg-white px-6 py-14 text-center">
+        <div className="rounded-xl border border-dashed border-paper-300 bg-white/40 backdrop-blur-sm px-6 py-14 text-center">
           <p className="text-sm text-ink-600">还没有考试</p>
           <p className="mt-1 text-xs text-ink-400">录入后可以一键生成复习计划</p>
         </div>

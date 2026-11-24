@@ -171,7 +171,7 @@ export default function MusicPlayer() {
       ) : (
         <button
           onClick={() => setOpen(true)}
-          className="flex items-center gap-2 rounded-full border border-paper-200 bg-white px-4 py-2.5 text-sm text-ink-700 transition-transform hover:-translate-y-0.5 hover:border-brand-300"
+          className="flex items-center gap-2 rounded-full border border-white/70 bg-white/55 px-4 py-2.5 backdrop-blur text-sm text-ink-700 transition-transform hover:-translate-y-0.5 hover:border-brand-300"
           style={{ boxShadow: "var(--shadow-float)" }}
         >
           <span aria-hidden>🎵</span>
