@@ -6,9 +6,10 @@ from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, s
 from fastapi.responses import FileResponse
 from sqlmodel import Session, select
 
+from ..auth import get_current_user, owned
 from ..config import settings
 from ..db import get_session
-from ..models import Annotation, Material, Subject, utcnow
+from ..models import Annotation, Material, Subject, User, utcnow
 from ..schemas import AnnotationRead, AnnotationUpsert, MaterialRead
 
 router = APIRouter(prefix="/api", tags=["materials"])
@@ -27,11 +28,8 @@ KIND_BY_EXT = {
 DEFAULT_MEDIA_TYPE = "application/octet-stream"
 
 
-def _get_material_or_404(session: Session, material_id: int) -> Material:
-    material = session.get(Material, material_id)
-    if material is None:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "资料不存在")
-    return material
+def _get_material_or_404(session: Session, material_id: int, user: User) -> Material:
+    return owned(session, Material, material_id, user, "资料不存在")
 
 
 @router.post(
@@ -43,10 +41,10 @@ async def upload_material(
     subject_id: int,
     file: UploadFile = File(...),
     title: str | None = Form(default=None),
+    user: User = Depends(get_current_user),
     session: Session = Depends(get_session),
 ) -> Material:
-    if session.get(Subject, subject_id) is None:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "学科不存在")
+    owned(session, Subject, subject_id, user, "学科不存在")
 
     filename = file.filename or "unnamed"
     suffix = Path(filename).suffix.lower()
@@ -72,6 +70,7 @@ async def upload_material(
     (uploads_dir / storage_name).write_bytes(data)
 
     material = Material(
+        user_id=user.id,
         subject_id=subject_id,
         title=(title or filename).strip()[:200] or filename,
         filename=filename[:200],
@@ -87,13 +86,14 @@ async def upload_material(
 
 @router.get("/subjects/{subject_id}/materials", response_model=list[MaterialRead])
 def list_materials(
-    subject_id: int, session: Session = Depends(get_session)
+    subject_id: int,
+    user: User = Depends(get_current_user),
+    session: Session = Depends(get_session),
 ) -> list[Material]:
-    if session.get(Subject, subject_id) is None:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "学科不存在")
+    owned(session, Subject, subject_id, user, "学科不存在")
     statement = (
         select(Material)
-        .where(Material.subject_id == subject_id)
+        .where(Material.subject_id == subject_id, Material.user_id == user.id)
         .order_by(Material.created_at)
     )
     return list(session.exec(statement).all())
@@ -101,16 +101,20 @@ def list_materials(
 
 @router.get("/materials/{material_id}", response_model=MaterialRead)
 def get_material(
-    material_id: int, session: Session = Depends(get_session)
+    material_id: int,
+    user: User = Depends(get_current_user),
+    session: Session = Depends(get_session),
 ) -> Material:
-    return _get_material_or_404(session, material_id)
+    return _get_material_or_404(session, material_id, user)
 
 
 @router.get("/materials/{material_id}/file")
 def download_material(
-    material_id: int, session: Session = Depends(get_session)
+    material_id: int,
+    user: User = Depends(get_current_user),
+    session: Session = Depends(get_session),
 ) -> FileResponse:
-    material = _get_material_or_404(session, material_id)
+    material = _get_material_or_404(session, material_id, user)
     path = settings.uploads_dir / material.storage_name
     if not path.exists():
         raise HTTPException(status.HTTP_404_NOT_FOUND, "文件已丢失")
@@ -125,9 +129,11 @@ def download_material(
 
 @router.delete("/materials/{material_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_material(
-    material_id: int, session: Session = Depends(get_session)
+    material_id: int,
+    user: User = Depends(get_current_user),
+    session: Session = Depends(get_session),
 ) -> None:
-    material = _get_material_or_404(session, material_id)
+    material = _get_material_or_404(session, material_id, user)
     path = settings.uploads_dir / material.storage_name
     path.unlink(missing_ok=True)
     for annotation in session.exec(
@@ -142,9 +148,11 @@ def delete_material(
     "/materials/{material_id}/annotations", response_model=list[AnnotationRead]
 )
 def list_annotations(
-    material_id: int, session: Session = Depends(get_session)
+    material_id: int,
+    user: User = Depends(get_current_user),
+    session: Session = Depends(get_session),
 ) -> list[Annotation]:
-    _get_material_or_404(session, material_id)
+    _get_material_or_404(session, material_id, user)
     statement = (
         select(Annotation)
         .where(Annotation.material_id == material_id)
@@ -160,9 +168,10 @@ def upsert_annotation(
     material_id: int,
     page: int,
     payload: AnnotationUpsert,
+    user: User = Depends(get_current_user),
     session: Session = Depends(get_session),
 ) -> Annotation:
-    _get_material_or_404(session, material_id)
+    _get_material_or_404(session, material_id, user)
     if page < 1:
         raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, "页码从 1 开始")
 
@@ -172,7 +181,12 @@ def upsert_annotation(
         )
     ).first()
     if annotation is None:
-        annotation = Annotation(material_id=material_id, page=page, payload=payload.payload)
+        annotation = Annotation(
+            user_id=user.id,
+            material_id=material_id,
+            page=page,
+            payload=payload.payload,
+        )
     else:
         annotation.payload = payload.payload
         annotation.updated_at = utcnow()
@@ -187,9 +201,12 @@ def upsert_annotation(
     status_code=status.HTTP_204_NO_CONTENT,
 )
 def delete_annotation(
-    material_id: int, page: int, session: Session = Depends(get_session)
+    material_id: int,
+    page: int,
+    user: User = Depends(get_current_user),
+    session: Session = Depends(get_session),
 ) -> None:
-    _get_material_or_404(session, material_id)
+    _get_material_or_404(session, material_id, user)
     annotation = session.exec(
         select(Annotation).where(
             Annotation.material_id == material_id, Annotation.page == page

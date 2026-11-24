@@ -4,6 +4,7 @@ from datetime import date, timedelta
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlmodel import Session, select
 
+from ..auth import get_current_user, owned
 from ..db import get_session
 from ..models import (
     Exam,
@@ -13,6 +14,7 @@ from ..models import (
     StudyPlan,
     Subject,
     Task,
+    User,
     utcnow,
 )
 from ..schemas_study import (
@@ -53,21 +55,29 @@ def _to_read(exam: Exam, today: date) -> dict:
 
 
 @router.get("/exams", response_model=list[ExamRead])
-def list_all_exams(session: Session = Depends(get_session)) -> list[dict]:
+def list_all_exams(
+    user: User = Depends(get_current_user),
+    session: Session = Depends(get_session),
+) -> list[dict]:
     today = date.today()
-    rows = session.exec(select(Exam).order_by(Exam.exam_date)).all()
+    rows = session.exec(
+        select(Exam).where(Exam.user_id == user.id).order_by(Exam.exam_date)
+    ).all()
     return [_to_read(exam, today) for exam in rows]
 
 
 @router.get("/subjects/{subject_id}/exams", response_model=list[ExamRead])
 def list_exams(
-    subject_id: int, session: Session = Depends(get_session)
+    subject_id: int,
+    user: User = Depends(get_current_user),
+    session: Session = Depends(get_session),
 ) -> list[dict]:
-    if session.get(Subject, subject_id) is None:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "学科不存在")
+    owned(session, Subject, subject_id, user, "学科不存在")
     today = date.today()
     rows = session.exec(
-        select(Exam).where(Exam.subject_id == subject_id).order_by(Exam.exam_date)
+        select(Exam)
+        .where(Exam.subject_id == subject_id, Exam.user_id == user.id)
+        .order_by(Exam.exam_date)
     ).all()
     return [_to_read(exam, today) for exam in rows]
 
@@ -78,11 +88,14 @@ def list_exams(
     status_code=status.HTTP_201_CREATED,
 )
 def create_exam(
-    subject_id: int, payload: ExamCreate, session: Session = Depends(get_session)
+    subject_id: int,
+    payload: ExamCreate,
+    user: User = Depends(get_current_user),
+    session: Session = Depends(get_session),
 ) -> dict:
-    if session.get(Subject, subject_id) is None:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "学科不存在")
+    owned(session, Subject, subject_id, user, "学科不存在")
     exam = Exam(
+        user_id=user.id,
         subject_id=subject_id,
         title=payload.title.strip(),
         exam_date=payload.exam_date,
@@ -95,10 +108,12 @@ def create_exam(
 
 
 @router.delete("/exams/{exam_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_exam(exam_id: int, session: Session = Depends(get_session)) -> None:
-    exam = session.get(Exam, exam_id)
-    if exam is None:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "考试不存在")
+def delete_exam(
+    exam_id: int,
+    user: User = Depends(get_current_user),
+    session: Session = Depends(get_session),
+) -> None:
+    exam = owned(session, Exam, exam_id, user, "考试不存在")
     for task in session.exec(select(Task).where(Task.exam_id == exam_id)).all():
         session.delete(task)
     for plan in session.exec(select(StudyPlan).where(StudyPlan.exam_id == exam_id)).all():
@@ -107,24 +122,34 @@ def delete_exam(exam_id: int, session: Session = Depends(get_session)) -> None:
     session.commit()
 
 
-def _collect_items(session: Session, subject_id: int, scope: str) -> list[str]:
+def _collect_items(
+    session: Session, user_id: int, subject_id: int, scope: str
+) -> list[str]:
     items: list[str] = []
     if scope:
         items.append(f"明确考试范围：{scope[:40]}")
 
     materials = session.exec(
-        select(Material).where(Material.subject_id == subject_id).order_by(Material.created_at)
+        select(Material)
+        .where(Material.subject_id == subject_id, Material.user_id == user_id)
+        .order_by(Material.created_at)
     ).all()
     items.extend(f"复习资料：{material.title[:30]}" for material in materials)
 
     mistakes = session.exec(
         select(Mistake).where(
-            Mistake.subject_id == subject_id, Mistake.status == "unmastered"
+            Mistake.subject_id == subject_id,
+            Mistake.status == "unmastered",
+            Mistake.user_id == user_id,
         )
     ).all()
     items.extend(f"重做错题：{mistake.question.strip()[:30]}" for mistake in mistakes)
 
-    maps = session.exec(select(MindMap).where(MindMap.subject_id == subject_id)).all()
+    maps = session.exec(
+        select(MindMap).where(
+            MindMap.subject_id == subject_id, MindMap.user_id == user_id
+        )
+    ).all()
     items.extend(f"回顾导图：{mindmap.title[:30]}" for mindmap in maps)
 
     # 去重并限制条数，避免计划过长
@@ -154,7 +179,9 @@ def _plan_context(session: Session, exam: Exam, subject: Subject, today: date) -
         lines.append(f"考试范围（用户填写，必须全部覆盖）：{exam.scope}")
 
     materials = session.exec(
-        select(Material).where(Material.subject_id == subject.id)
+        select(Material).where(
+            Material.subject_id == subject.id, Material.user_id == subject.user_id
+        )
     ).all()
     if materials:
         lines.append("学生已有资料：" + "、".join(m.title[:30] for m in materials[:10]))
@@ -162,7 +189,9 @@ def _plan_context(session: Session, exam: Exam, subject: Subject, today: date) -
         lines.append("学生还没有上传资料，以教材目录与常见考点为准。")
 
     mistakes = session.exec(
-        select(Mistake).where(Mistake.subject_id == subject.id)
+        select(Mistake).where(
+            Mistake.subject_id == subject.id, Mistake.user_id == subject.user_id
+        )
     ).all()
     if mistakes:
         lines.append(f"错题数量：{len(mistakes)}")
@@ -360,15 +389,20 @@ def _normalize_plan(
 
 def _save_plan(
     session: Session,
+    user_id: int,
     exam_id: int,
     summary: str,
     source_note: str,
     coverage: list[PlanCoverage],
     days: list[PlanDay],
 ) -> None:
-    record = session.exec(select(StudyPlan).where(StudyPlan.exam_id == exam_id)).first()
+    record = session.exec(
+        select(StudyPlan).where(
+            StudyPlan.exam_id == exam_id, StudyPlan.user_id == user_id
+        )
+    ).first()
     if record is None:
-        record = StudyPlan(exam_id=exam_id)
+        record = StudyPlan(user_id=user_id, exam_id=exam_id)
         session.add(record)
     record.summary = summary
     record.source_note = source_note
@@ -383,10 +417,11 @@ def _save_plan(
 
 @router.get("/exams/{exam_id}/plan/ai", response_model=AIPlanResult)
 def read_ai_plan(
-    exam_id: int, session: Session = Depends(get_session)
+    exam_id: int,
+    user: User = Depends(get_current_user),
+    session: Session = Depends(get_session),
 ) -> AIPlanResult:
-    if session.get(Exam, exam_id) is None:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "考试不存在")
+    owned(session, Exam, exam_id, user, "考试不存在")
     record = session.exec(select(StudyPlan).where(StudyPlan.exam_id == exam_id)).first()
     if record is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "还没有生成 AI 计划")
@@ -413,15 +448,12 @@ def read_ai_plan(
 async def generate_ai_plan(
     exam_id: int,
     payload: AIPlanRequest | None = None,
+    user: User = Depends(get_current_user),
     llm: LLMClient = Depends(get_llm),
     session: Session = Depends(get_session),
 ) -> AIPlanResult:
-    exam = session.get(Exam, exam_id)
-    if exam is None:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "考试不存在")
-    subject = session.get(Subject, exam.subject_id)
-    if subject is None:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "学科不存在")
+    exam = owned(session, Exam, exam_id, user, "考试不存在")
+    subject = owned(session, Subject, exam.subject_id, user, "学科不存在")
 
     today = date.today()
     if exam.exam_date <= today:
@@ -461,7 +493,9 @@ async def generate_ai_plan(
 
     # 3. 覆盖旧 AI 计划与任务，写入新的
     for old in session.exec(
-        select(Task).where(Task.exam_id == exam_id, Task.source == "ai")
+        select(Task).where(
+            Task.exam_id == exam_id, Task.source == "ai", Task.user_id == user.id
+        )
     ).all():
         session.delete(old)
 
@@ -472,6 +506,7 @@ async def generate_ai_plan(
         )
         for item in day.tasks:
             task = Task(
+                user_id=user.id,
                 subject_id=exam.subject_id,
                 exam_id=exam_id,
                 title=item.title,
@@ -483,7 +518,7 @@ async def generate_ai_plan(
             session.add(task)
             created.append(task)
 
-    _save_plan(session, exam_id, summary, source_note, coverage, days)
+    _save_plan(session, user.id, exam_id, summary, source_note, coverage, days)
     session.commit()
     for task in created:
         session.refresh(task)
@@ -499,28 +534,31 @@ async def generate_ai_plan(
 
 @router.post("/exams/{exam_id}/plan", response_model=list[TaskRead])
 def generate_plan(
-    exam_id: int, session: Session = Depends(get_session)
+    exam_id: int,
+    user: User = Depends(get_current_user),
+    session: Session = Depends(get_session),
 ) -> list[dict]:
-    exam = session.get(Exam, exam_id)
-    if exam is None:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "考试不存在")
+    exam = owned(session, Exam, exam_id, user, "考试不存在")
 
     today = date.today()
     if exam.exam_date < today:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "考试日期已过，无法生成计划")
 
-    items = _collect_items(session, exam.subject_id, exam.scope)
+    items = _collect_items(session, user.id, exam.subject_id, exam.scope)
     plan = build_plan(exam.exam_date, today, items)
 
     # 重新生成时清掉旧计划，保留手动任务
     for old in session.exec(
-        select(Task).where(Task.exam_id == exam_id, Task.source == "plan")
+        select(Task).where(
+            Task.exam_id == exam_id, Task.source == "plan", Task.user_id == user.id
+        )
     ).all():
         session.delete(old)
 
     created: list[Task] = []
     for due, title in plan:
         task = Task(
+            user_id=user.id,
             subject_id=exam.subject_id,
             exam_id=exam_id,
             title=title,

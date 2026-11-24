@@ -1,11 +1,12 @@
 import json
 from datetime import date
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, status
 from sqlmodel import Session, select
 
+from ..auth import get_current_user, owned
 from ..db import get_session
-from ..models import Exam, Subject, Task
+from ..models import Exam, Subject, Task, User
 from ..schemas_study import TaskCreate, TaskRead, TaskUpdate
 from ..services.planner import merge_today
 
@@ -17,10 +18,13 @@ def list_tasks(
     day: date | None = None,
     include_overdue: bool = True,
     subject_id: int | None = None,
+    user: User = Depends(get_current_user),
     session: Session = Depends(get_session),
 ) -> list[dict]:
     target = day or date.today()
-    statement = select(Task).where(Task.due_date <= target)
+    statement = select(Task).where(
+        Task.user_id == user.id, Task.due_date <= target
+    )
     if subject_id is not None:
         statement = statement.where(Task.subject_id == subject_id)
     rows = session.exec(statement.order_by(Task.due_date)).all()
@@ -65,13 +69,16 @@ def _to_read(task: Task) -> dict:
 
 @router.post("", response_model=TaskRead, status_code=status.HTTP_201_CREATED)
 def create_task(
-    payload: TaskCreate, session: Session = Depends(get_session)
+    payload: TaskCreate,
+    user: User = Depends(get_current_user),
+    session: Session = Depends(get_session),
 ) -> dict:
-    if payload.subject_id is not None and session.get(Subject, payload.subject_id) is None:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "学科不存在")
-    if payload.exam_id is not None and session.get(Exam, payload.exam_id) is None:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "考试不存在")
+    if payload.subject_id is not None:
+        owned(session, Subject, payload.subject_id, user, "学科不存在")
+    if payload.exam_id is not None:
+        owned(session, Exam, payload.exam_id, user, "考试不存在")
     task = Task(
+        user_id=user.id,
         title=payload.title.strip(),
         due_date=payload.due_date,
         subject_id=payload.subject_id,
@@ -86,11 +93,12 @@ def create_task(
 
 @router.patch("/{task_id}", response_model=TaskRead)
 def update_task(
-    task_id: int, payload: TaskUpdate, session: Session = Depends(get_session)
+    task_id: int,
+    payload: TaskUpdate,
+    user: User = Depends(get_current_user),
+    session: Session = Depends(get_session),
 ) -> dict:
-    task = session.get(Task, task_id)
-    if task is None:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "任务不存在")
+    task = owned(session, Task, task_id, user, "任务不存在")
     if payload.title is not None:
         task.title = payload.title.strip()
     if payload.due_date is not None:
@@ -104,9 +112,11 @@ def update_task(
 
 
 @router.delete("/{task_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_task(task_id: int, session: Session = Depends(get_session)) -> None:
-    task = session.get(Task, task_id)
-    if task is None:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "任务不存在")
+def delete_task(
+    task_id: int,
+    user: User = Depends(get_current_user),
+    session: Session = Depends(get_session),
+) -> None:
+    task = owned(session, Task, task_id, user, "任务不存在")
     session.delete(task)
     session.commit()

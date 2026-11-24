@@ -5,23 +5,36 @@ from fastapi.testclient import TestClient
 from sqlalchemy.pool import NullPool
 from sqlmodel import Session, SQLModel, create_engine
 
+from app.auth import reset_throttle
 from app.config import settings
 from app.db import get_session
 from app.main import create_app
 
+DEFAULT_USERNAME = "tester"
+DEFAULT_PASSWORD = "learnloop-test-123"
 
-@pytest.fixture(name="client")
-def client_fixture(tmp_path, monkeypatch) -> Iterator[TestClient]:
+
+def _prepare_settings(monkeypatch, tmp_path) -> str:
     # 每次测试用独立的数据库与上传目录，避免污染开发数据
     monkeypatch.setattr(settings, "data_dir", tmp_path, raising=False)
     db_path = tmp_path / "learnloop.db"
     monkeypatch.setattr(
         settings, "database_url", f"sqlite:///{db_path.as_posix()}", raising=False
     )
+    # 认证相关配置固定下来，避免本机 .env 影响测试
+    monkeypatch.setattr(settings, "allow_registration", True, raising=False)
+    monkeypatch.setattr(settings, "registration_code", "", raising=False)
+    monkeypatch.setattr(settings, "session_cookie_secure", False, raising=False)
+    monkeypatch.setattr(settings, "deepseek_api_key", "", raising=False)
+    return f"sqlite:///{db_path.as_posix()}"
+
+
+def _build_client(monkeypatch, tmp_path) -> Iterator[TestClient]:
+    url = _prepare_settings(monkeypatch, tmp_path)
 
     # 文件型数据库 + 不池化连接：备份替换文件后能立刻读到新库
     engine = create_engine(
-        f"sqlite:///{db_path.as_posix()}",
+        url,
         connect_args={"check_same_thread": False},
         poolclass=NullPool,
     )
@@ -35,6 +48,50 @@ def client_fixture(tmp_path, monkeypatch) -> Iterator[TestClient]:
     app.dependency_overrides[get_session] = override_session
     with TestClient(app) as client:
         yield client
+
+
+@pytest.fixture(autouse=True)
+def _reset_login_throttle() -> Iterator[None]:
+    reset_throttle()
+    yield
+    reset_throttle()
+
+
+@pytest.fixture(name="anon_client")
+def anon_client_fixture(monkeypatch, tmp_path) -> Iterator[TestClient]:
+    """没有登录的客户端，用来验证未授权访问。"""
+    yield from _build_client(monkeypatch, tmp_path)
+
+
+@pytest.fixture(name="client")
+def client_fixture(monkeypatch, tmp_path) -> Iterator[TestClient]:
+    for client in _build_client(monkeypatch, tmp_path):
+        response = client.post(
+            "/api/auth/register",
+            json={"username": DEFAULT_USERNAME, "password": DEFAULT_PASSWORD},
+        )
+        assert response.status_code == 201, response.text
+        yield client
+
+
+@pytest.fixture(name="user")
+def user_fixture(client: TestClient) -> dict:
+    response = client.get("/api/auth/me")
+    assert response.status_code == 200
+    return response.json()["user"]
+
+
+OTHER_USER = {"username": "roommate", "password": "learnloop-test-456"}
+
+
+@pytest.fixture(name="other_client")
+def other_client_fixture(client: TestClient) -> Iterator[TestClient]:
+    """同一个数据库上的第二个账号，用来验证数据隔离。"""
+    other = TestClient(client.app)
+    response = other.post("/api/auth/register", json=OTHER_USER)
+    assert response.status_code == 201, response.text
+    yield other
+    other.close()
 
 
 @pytest.fixture(name="subject")

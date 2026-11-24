@@ -3,8 +3,9 @@ import json
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlmodel import Session, select
 
+from ..auth import get_current_user, owned
 from ..db import get_session
-from ..models import Mistake, Subject, utcnow
+from ..models import Mistake, Subject, User, utcnow
 from ..schemas import MistakeCreate, MistakeRead, MistakeUpdate
 
 router = APIRouter(prefix="/api", tags=["mistakes"])
@@ -34,22 +35,21 @@ def _to_read(mistake: Mistake) -> dict:
     }
 
 
-def _get_or_404(session: Session, mistake_id: int) -> Mistake:
-    mistake = session.get(Mistake, mistake_id)
-    if mistake is None:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "错题不存在")
-    return mistake
+def _get_or_404(session: Session, mistake_id: int, user: User) -> Mistake:
+    return owned(session, Mistake, mistake_id, user, "错题不存在")
 
 
 @router.get("/subjects/{subject_id}/mistakes", response_model=list[MistakeRead])
 def list_mistakes(
     subject_id: int,
     status_filter: str | None = Query(default=None, alias="status"),
+    user: User = Depends(get_current_user),
     session: Session = Depends(get_session),
 ) -> list[dict]:
-    if session.get(Subject, subject_id) is None:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "学科不存在")
-    statement = select(Mistake).where(Mistake.subject_id == subject_id)
+    owned(session, Subject, subject_id, user, "学科不存在")
+    statement = select(Mistake).where(
+        Mistake.subject_id == subject_id, Mistake.user_id == user.id
+    )
     if status_filter:
         statement = statement.where(Mistake.status == status_filter)
     statement = statement.order_by(Mistake.created_at.desc())
@@ -62,12 +62,15 @@ def list_mistakes(
     status_code=status.HTTP_201_CREATED,
 )
 def create_mistake(
-    subject_id: int, payload: MistakeCreate, session: Session = Depends(get_session)
+    subject_id: int,
+    payload: MistakeCreate,
+    user: User = Depends(get_current_user),
+    session: Session = Depends(get_session),
 ) -> dict:
-    if session.get(Subject, subject_id) is None:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "学科不存在")
+    owned(session, Subject, subject_id, user, "学科不存在")
 
     mistake = Mistake(
+        user_id=user.id,
         subject_id=subject_id,
         question=payload.question.strip(),
         answer=payload.answer.strip(),
@@ -85,15 +88,22 @@ def create_mistake(
 
 
 @router.get("/mistakes/{mistake_id}", response_model=MistakeRead)
-def get_mistake(mistake_id: int, session: Session = Depends(get_session)) -> dict:
-    return _to_read(_get_or_404(session, mistake_id))
+def get_mistake(
+    mistake_id: int,
+    user: User = Depends(get_current_user),
+    session: Session = Depends(get_session),
+) -> dict:
+    return _to_read(_get_or_404(session, mistake_id, user))
 
 
 @router.patch("/mistakes/{mistake_id}", response_model=MistakeRead)
 def update_mistake(
-    mistake_id: int, payload: MistakeUpdate, session: Session = Depends(get_session)
+    mistake_id: int,
+    payload: MistakeUpdate,
+    user: User = Depends(get_current_user),
+    session: Session = Depends(get_session),
 ) -> dict:
-    mistake = _get_or_404(session, mistake_id)
+    mistake = _get_or_404(session, mistake_id, user)
     if payload.question is not None:
         mistake.question = payload.question.strip()
     if payload.answer is not None:
@@ -118,7 +128,11 @@ def update_mistake(
 
 
 @router.delete("/mistakes/{mistake_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_mistake(mistake_id: int, session: Session = Depends(get_session)) -> None:
-    mistake = _get_or_404(session, mistake_id)
+def delete_mistake(
+    mistake_id: int,
+    user: User = Depends(get_current_user),
+    session: Session = Depends(get_session),
+) -> None:
+    mistake = _get_or_404(session, mistake_id, user)
     session.delete(mistake)
     session.commit()

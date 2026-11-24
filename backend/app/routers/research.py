@@ -5,8 +5,9 @@ from pathlib import Path
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
 from sqlmodel import Session, select
 
+from ..auth import get_current_user, get_setting, owned, save_setting
 from ..db import get_session
-from ..models import BonusItem, Course, ScoreRule, Setting, utcnow
+from ..models import BonusItem, Course, ScoreRule, User
 from ..schemas_research import (
     BonusCreate,
     BonusRead,
@@ -41,12 +42,12 @@ WEIGHTS_KEY = "score_weights"
 DEFAULT_COURSE_WEIGHT = 0.7
 
 
-def _get_course_weight(session: Session) -> float:
-    record = session.get(Setting, WEIGHTS_KEY)
-    if record is None or not record.value:
+def _get_course_weight(session: Session, user_id: int) -> float:
+    raw = get_setting(session, user_id, WEIGHTS_KEY)
+    if not raw:
         return DEFAULT_COURSE_WEIGHT
     try:
-        data = json.loads(record.value)
+        data = json.loads(raw)
         value = float(data.get("course_weight", DEFAULT_COURSE_WEIGHT))
     except (json.JSONDecodeError, TypeError, ValueError):
         return DEFAULT_COURSE_WEIGHT
@@ -54,15 +55,27 @@ def _get_course_weight(session: Session) -> float:
 
 
 @router.get("/courses", response_model=list[CourseRead])
-def list_courses(session: Session = Depends(get_session)) -> list[Course]:
-    return list(session.exec(select(Course).order_by(Course.created_at)).all())
+def list_courses(
+    user: User = Depends(get_current_user),
+    session: Session = Depends(get_session),
+) -> list[Course]:
+    return list(
+        session.exec(
+            select(Course)
+            .where(Course.user_id == user.id)
+            .order_by(Course.created_at)
+        ).all()
+    )
 
 
 @router.post("/courses", response_model=CourseRead, status_code=status.HTTP_201_CREATED)
 def create_course(
-    payload: CourseCreate, session: Session = Depends(get_session)
+    payload: CourseCreate,
+    user: User = Depends(get_current_user),
+    session: Session = Depends(get_session),
 ) -> Course:
     course = Course(
+        user_id=user.id,
         name=payload.name.strip(),
         credits=payload.credits,
         score=payload.score,
@@ -76,27 +89,41 @@ def create_course(
 
 
 @router.delete("/courses/{course_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_course(course_id: int, session: Session = Depends(get_session)) -> None:
-    course = session.get(Course, course_id)
-    if course is None:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "课程不存在")
+def delete_course(
+    course_id: int,
+    user: User = Depends(get_current_user),
+    session: Session = Depends(get_session),
+) -> None:
+    course = owned(session, Course, course_id, user, "课程不存在")
     session.delete(course)
     session.commit()
 
 
 @router.get("/rules", response_model=list[RuleRead])
-def list_rules(session: Session = Depends(get_session)) -> list[ScoreRule]:
+def list_rules(
+    user: User = Depends(get_current_user),
+    session: Session = Depends(get_session),
+) -> list[ScoreRule]:
     return list(
         session.exec(
-            select(ScoreRule).order_by(ScoreRule.dimension, ScoreRule.created_at)
+            select(ScoreRule)
+            .where(ScoreRule.user_id == user.id)
+            .order_by(ScoreRule.dimension, ScoreRule.created_at)
         ).all()
     )
 
 
 @router.post("/rules", response_model=RuleRead, status_code=status.HTTP_201_CREATED)
-def create_rule(payload: RuleCreate, session: Session = Depends(get_session)) -> ScoreRule:
+def create_rule(
+    payload: RuleCreate,
+    user: User = Depends(get_current_user),
+    session: Session = Depends(get_session),
+) -> ScoreRule:
     rule = ScoreRule(
-        dimension=payload.dimension, name=payload.name.strip(), score=payload.score
+        user_id=user.id,
+        dimension=payload.dimension,
+        name=payload.name.strip(),
+        score=payload.score,
     )
     session.add(rule)
     session.commit()
@@ -105,10 +132,12 @@ def create_rule(payload: RuleCreate, session: Session = Depends(get_session)) ->
 
 
 @router.delete("/rules/{rule_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_rule(rule_id: int, session: Session = Depends(get_session)) -> None:
-    rule = session.get(ScoreRule, rule_id)
-    if rule is None:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "规则不存在")
+def delete_rule(
+    rule_id: int,
+    user: User = Depends(get_current_user),
+    session: Session = Depends(get_session),
+) -> None:
+    rule = owned(session, ScoreRule, rule_id, user, "规则不存在")
     session.delete(rule)
     session.commit()
 
@@ -274,19 +303,27 @@ async def parse_bonus_file(
 
 
 @router.get("/bonus", response_model=list[BonusRead])
-def list_bonus(session: Session = Depends(get_session)) -> list[BonusItem]:
+def list_bonus(
+    user: User = Depends(get_current_user),
+    session: Session = Depends(get_session),
+) -> list[BonusItem]:
     return list(
         session.exec(
-            select(BonusItem).order_by(BonusItem.dimension, BonusItem.created_at)
+            select(BonusItem)
+            .where(BonusItem.user_id == user.id)
+            .order_by(BonusItem.dimension, BonusItem.created_at)
         ).all()
     )
 
 
 @router.post("/bonus", response_model=BonusRead, status_code=status.HTTP_201_CREATED)
 def create_bonus(
-    payload: BonusCreate, session: Session = Depends(get_session)
+    payload: BonusCreate,
+    user: User = Depends(get_current_user),
+    session: Session = Depends(get_session),
 ) -> BonusItem:
     item = BonusItem(
+        user_id=user.id,
         dimension=payload.dimension,
         title=payload.title.strip(),
         score=payload.score,
@@ -299,48 +336,58 @@ def create_bonus(
 
 
 @router.delete("/bonus/{bonus_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_bonus(bonus_id: int, session: Session = Depends(get_session)) -> None:
-    item = session.get(BonusItem, bonus_id)
-    if item is None:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "加分项不存在")
+def delete_bonus(
+    bonus_id: int,
+    user: User = Depends(get_current_user),
+    session: Session = Depends(get_session),
+) -> None:
+    item = owned(session, BonusItem, bonus_id, user, "加分项不存在")
     session.delete(item)
     session.commit()
 
 
 @router.get("/weights", response_model=WeightsRead)
-def read_weights(session: Session = Depends(get_session)) -> WeightsRead:
-    return WeightsRead(course_weight=_get_course_weight(session))
+def read_weights(
+    user: User = Depends(get_current_user),
+    session: Session = Depends(get_session),
+) -> WeightsRead:
+    return WeightsRead(course_weight=_get_course_weight(session, user.id))
 
 
 @router.put("/weights", response_model=WeightsRead)
 def save_weights(
-    payload: WeightsUpdate, session: Session = Depends(get_session)
+    payload: WeightsUpdate,
+    user: User = Depends(get_current_user),
+    session: Session = Depends(get_session),
 ) -> WeightsRead:
-    record = session.get(Setting, WEIGHTS_KEY)
-    value = json.dumps({"course_weight": payload.course_weight})
-    if record is None:
-        record = Setting(key=WEIGHTS_KEY, value=value)
-    else:
-        record.value = value
-        record.updated_at = utcnow()
-    session.add(record)
+    save_setting(
+        session,
+        user.id,
+        WEIGHTS_KEY,
+        json.dumps({"course_weight": payload.course_weight}),
+    )
     session.commit()
     return WeightsRead(course_weight=payload.course_weight)
 
 
 @router.get("/overview", response_model=OverviewRead)
-def overview(session: Session = Depends(get_session)) -> OverviewRead:
+def overview(
+    user: User = Depends(get_current_user),
+    session: Session = Depends(get_session),
+) -> OverviewRead:
     courses = [
         CourseRow(credits=c.credits, score=c.score, category=c.category)
-        for c in session.exec(select(Course)).all()
+        for c in session.exec(select(Course).where(Course.user_id == user.id)).all()
     ]
     stats = course_stats(courses)
 
-    bonus = session.exec(select(BonusItem)).all()
+    bonus = session.exec(
+        select(BonusItem).where(BonusItem.user_id == user.id)
+    ).all()
     totals = dimension_totals([(item.dimension, item.score) for item in bonus])
     zongce_total = round(sum(totals.values()), 2)
 
-    weight = _get_course_weight(session)
+    weight = _get_course_weight(session, user.id)
     composite = composite_score(stats["weighted_average"], zongce_total, weight)
 
     return OverviewRead(

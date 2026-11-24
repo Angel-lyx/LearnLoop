@@ -3,8 +3,9 @@ import json
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlmodel import Session, select
 
+from ..auth import get_current_user, owned
 from ..db import get_session
-from ..models import Exam, Material, MindMap, Mistake, Subject, utcnow
+from ..models import Exam, Material, MindMap, Mistake, Subject, User, utcnow
 from ..schemas_study import MindMapCreate, MindMapRead, MindMapUpdate
 from ..services.deps import get_llm
 from ..services.llm import MAP_SYSTEM, LLMClient, LLMError
@@ -43,13 +44,14 @@ def _ensure_ids(node: dict, counter: list[int], depth: int = 0) -> dict:
 
 @router.get("/subjects/{subject_id}/maps", response_model=list[MindMapRead])
 def list_maps(
-    subject_id: int, session: Session = Depends(get_session)
+    subject_id: int,
+    user: User = Depends(get_current_user),
+    session: Session = Depends(get_session),
 ) -> list[dict]:
-    if session.get(Subject, subject_id) is None:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "学科不存在")
+    owned(session, Subject, subject_id, user, "学科不存在")
     rows = session.exec(
         select(MindMap)
-        .where(MindMap.subject_id == subject_id)
+        .where(MindMap.subject_id == subject_id, MindMap.user_id == user.id)
         .order_by(MindMap.created_at.desc())
     ).all()
     return [_to_read(item) for item in rows]
@@ -61,13 +63,18 @@ def list_maps(
     status_code=status.HTTP_201_CREATED,
 )
 def create_map(
-    subject_id: int, payload: MindMapCreate, session: Session = Depends(get_session)
+    subject_id: int,
+    payload: MindMapCreate,
+    user: User = Depends(get_current_user),
+    session: Session = Depends(get_session),
 ) -> dict:
-    if session.get(Subject, subject_id) is None:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "学科不存在")
+    owned(session, Subject, subject_id, user, "学科不存在")
     tree = {"nodeData": {"id": "root", "topic": payload.title, "children": []}}
     mindmap = MindMap(
-        subject_id=subject_id, title=payload.title.strip(), data=json.dumps(tree, ensure_ascii=False)
+        user_id=user.id,
+        subject_id=subject_id,
+        title=payload.title.strip(),
+        data=json.dumps(tree, ensure_ascii=False),
     )
     session.add(mindmap)
     session.commit()
@@ -76,20 +83,22 @@ def create_map(
 
 
 @router.get("/maps/{map_id}", response_model=MindMapRead)
-def get_map(map_id: int, session: Session = Depends(get_session)) -> dict:
-    mindmap = session.get(MindMap, map_id)
-    if mindmap is None:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "导图不存在")
-    return _to_read(mindmap)
+def get_map(
+    map_id: int,
+    user: User = Depends(get_current_user),
+    session: Session = Depends(get_session),
+) -> dict:
+    return _to_read(owned(session, MindMap, map_id, user, "导图不存在"))
 
 
 @router.patch("/maps/{map_id}", response_model=MindMapRead)
 def update_map(
-    map_id: int, payload: MindMapUpdate, session: Session = Depends(get_session)
+    map_id: int,
+    payload: MindMapUpdate,
+    user: User = Depends(get_current_user),
+    session: Session = Depends(get_session),
 ) -> dict:
-    mindmap = session.get(MindMap, map_id)
-    if mindmap is None:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "导图不存在")
+    mindmap = owned(session, MindMap, map_id, user, "导图不存在")
     if payload.title is not None:
         mindmap.title = payload.title.strip()
     if payload.data is not None:
@@ -102,10 +111,12 @@ def update_map(
 
 
 @router.delete("/maps/{map_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_map(map_id: int, session: Session = Depends(get_session)) -> None:
-    mindmap = session.get(MindMap, map_id)
-    if mindmap is None:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "导图不存在")
+def delete_map(
+    map_id: int,
+    user: User = Depends(get_current_user),
+    session: Session = Depends(get_session),
+) -> None:
+    mindmap = owned(session, MindMap, map_id, user, "导图不存在")
     session.delete(mindmap)
     session.commit()
 
@@ -114,13 +125,17 @@ def _build_context(session: Session, subject: Subject) -> str:
     parts: list[str] = [f"学科：{subject.name}"]
 
     materials = session.exec(
-        select(Material).where(Material.subject_id == subject.id)
+        select(Material).where(
+            Material.subject_id == subject.id, Material.user_id == subject.user_id
+        )
     ).all()
     if materials:
         parts.append("资料：" + "、".join(m.title[:30] for m in materials[:10]))
 
     mistakes = session.exec(
-        select(Mistake).where(Mistake.subject_id == subject.id)
+        select(Mistake).where(
+            Mistake.subject_id == subject.id, Mistake.user_id == subject.user_id
+        )
     ).all()
     if mistakes:
         points: list[str] = []
@@ -134,7 +149,11 @@ def _build_context(session: Session, subject: Subject) -> str:
         if points:
             parts.append("错题涉及：" + "、".join(dict.fromkeys(points))[:400])
 
-    exams = session.exec(select(Exam).where(Exam.subject_id == subject.id)).all()
+    exams = session.exec(
+        select(Exam).where(
+            Exam.subject_id == subject.id, Exam.user_id == subject.user_id
+        )
+    ).all()
     if exams:
         parts.append("考试：" + "、".join(f"{e.title}({e.exam_date})" for e in exams[:5]))
 
@@ -144,12 +163,11 @@ def _build_context(session: Session, subject: Subject) -> str:
 @router.post("/subjects/{subject_id}/maps/generate", response_model=MindMapRead)
 async def generate_map(
     subject_id: int,
+    user: User = Depends(get_current_user),
     llm: LLMClient = Depends(get_llm),
     session: Session = Depends(get_session),
 ) -> dict:
-    subject = session.get(Subject, subject_id)
-    if subject is None:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "学科不存在")
+    subject = owned(session, Subject, subject_id, user, "学科不存在")
 
     context = _build_context(session, subject)
     try:
@@ -171,6 +189,7 @@ async def generate_map(
     tree = {"nodeData": {**node, "id": "root"}}
 
     mindmap = MindMap(
+        user_id=user.id,
         subject_id=subject_id,
         title=str(root)[:40],
         data=json.dumps(tree, ensure_ascii=False),
