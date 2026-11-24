@@ -52,16 +52,22 @@ async function main() {
     route.fulfill({ json: { ok: true }, status: 200 }),
   );
 
-  // 1. 设置页
-  await page.goto(`${BASE}/settings`, { waitUntil: "networkidle" });
-  await page.getByPlaceholder("sk-...").fill("sk-e2e-dummy-1234567890");
-  await page.getByRole("button", { name: "保存", exact: true }).click();
-  await page.waitForSelector("text=已配置");
-  ok(true, "设置页保存 API Key 后显示已配置");
+  // 1. 设置页（若用户已经配置了真实 Key，则跳过这一段，绝不覆盖用户密钥）
+  const aiState = await (await fetch(`${BASE}/api/settings/ai`)).json();
+  const keyWasConfigured = Boolean(aiState.configured);
+  if (!keyWasConfigured) {
+    await page.goto(`${BASE}/settings`, { waitUntil: "networkidle" });
+    await page.getByPlaceholder("sk-...").fill("sk-e2e-dummy-1234567890");
+    await page.getByRole("button", { name: "保存", exact: true }).click();
+    await page.waitForSelector("text=已配置");
+    ok(true, "设置页保存 API Key 后显示已配置");
 
-  await page.getByRole("button", { name: "测试连接" }).click();
-  await page.waitForSelector("text=连接成功");
-  ok(true, "测试连接返回成功");
+    await page.getByRole("button", { name: "测试连接" }).click();
+    await page.waitForSelector("text=连接成功");
+    ok(true, "测试连接返回成功");
+  } else {
+    console.log("SKIP 已存在真实 API Key，跳过设置页测试（避免覆盖）");
+  }
 
   // 2. 错题页
   await page.goto(`${BASE}/subjects/${subject.id}`, { waitUntil: "networkidle" });
@@ -110,7 +116,9 @@ async function main() {
   // 清理：删错题、学科、以及测试写入的 Key
   await fetch(`${BASE}/api/mistakes/${listed[0].id}`, { method: "DELETE" });
   await fetch(`${BASE}/api/subjects/${subject.id}`, { method: "DELETE" });
-  await fetch(`${BASE}/api/settings/ai`, { method: "DELETE" });
+  if (!keyWasConfigured) {
+    await fetch(`${BASE}/api/settings/ai`, { method: "DELETE" });
+  }
   console.log("OK");
 }
 
