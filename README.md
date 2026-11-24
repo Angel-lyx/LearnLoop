@@ -29,6 +29,31 @@ pnpm dev
 **第一次使用**：进入「设置」页，把 DeepSeek 的 API Key 粘进去保存，再点「测试连接」。
 Key 只存在服务器上属于你的那条记录里，不会打包进前端，也不会进 git。
 
+## 在 GitHub Codespaces 上跑（不买服务器，几个人一起用）
+
+代码在 GitHub，服务跑在 GitHub 的云机器上，8000 端口公开成一个链接，别人打开就能注册使用。
+适合「几个人在电脑上一起用」，不适合当 7×24 服务（原因见下面的限制）。
+
+1. 仓库首页 → `Code` → `Codespaces` → `Create codespace on main`
+2. 首次创建会自动执行 `.devcontainer/setup.sh`：装后端依赖 + 装前端依赖 + 打包，约 3–5 分钟
+3. 容器启动后 `.devcontainer/start.sh` 会自动拉起服务（FastAPI 同时托管前端）
+4. 在下方「端口」面板把 **8000** 的可见性改成 **Public**，得到的
+   `https://<codespace 名>-8000.app.github.dev` 就是分享链接
+5. 别人打开链接后注册即可，注册要填邀请码（默认 `learnloop`）
+
+改邀请码、或服务没自动起来时，手动重启：
+
+```bash
+REGISTRATION_CODE=你自己的码 bash .devcontainer/start.sh
+tail -f /tmp/learnloop.log     # 看日志
+```
+
+**限制（很重要）**
+
+- GitHub 免费账号每月 120 核时，2 核机器约等于 60 小时；闲置 30 分钟自动停止，停止期间链接打不开
+- 数据存在 Codespace 的磁盘里，**删除 Codespace 会连数据一起删**，记得用设置页「导出备份」留档
+- 免费额度用完，或者要长期在线，就换下面的服务器方案（或用 Oracle 永久免费机）
+
 ## 部署到服务器（电脑关机，手机照样用）
 
 GitHub Pages 只能托管静态文件，跑不了这个项目的 FastAPI 后端。要让手机在电脑关机后仍能使用，
