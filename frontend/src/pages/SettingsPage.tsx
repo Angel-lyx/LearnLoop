@@ -1,6 +1,7 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
-import { settingsApi } from "../lib/api";import type { AISettings } from "../types";
+import { backupApi, settingsApi } from "../lib/api";
+import type { AISettings } from "../types";
 
 export default function SettingsPage() {
   const [settings, setSettings] = useState<AISettings | null>(null);
@@ -9,6 +10,29 @@ export default function SettingsPage() {
   const [message, setMessage] = useState<{ kind: "ok" | "error"; text: string } | null>(
     null,
   );
+  const importRef = useRef<HTMLInputElement>(null);
+  const [importing, setImporting] = useState(false);
+
+  async function handleImport(event: React.ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    if (!window.confirm("导入会覆盖当前所有数据，确定继续？")) {
+      event.target.value = "";
+      return;
+    }
+    setImporting(true);
+    try {
+      await backupApi.import(file);
+      window.location.reload();
+    } catch (error) {
+      setMessage({
+        kind: "error",
+        text: error instanceof Error ? error.message : "导入失败",
+      });
+      setImporting(false);
+      event.target.value = "";
+    }
+  }
 
   useEffect(() => {
     settingsApi
@@ -159,8 +183,31 @@ export default function SettingsPage() {
       <section className="rounded-xl border border-paper-200 bg-white p-5">
         <h2 className="text-sm font-medium text-ink-950">数据备份</h2>
         <p className="mt-1 text-xs text-ink-400">
-          所有数据保存在本机 backend/data/learnloop.db，拷贝该文件即可备份（导入导出功能在 M5 上线）
+          导出包含数据库与所有上传文件的压缩包；导入会覆盖当前数据，请先在导出里留一份
         </p>
+        <div className="mt-3 flex flex-wrap items-center gap-2">
+          <a
+            href={backupApi.exportUrl}
+            className="rounded-lg border border-paper-200 px-3 py-1.5 text-xs text-ink-600 hover:bg-paper-50"
+          >
+            导出备份
+          </a>
+          <input
+            ref={importRef}
+            type="file"
+            accept=".zip"
+            className="hidden"
+            onChange={(event) => void handleImport(event)}
+          />
+          <button
+            onClick={() => importRef.current?.click()}
+            disabled={importing}
+            className="rounded-lg border border-paper-200 px-3 py-1.5 text-xs text-ink-600 hover:bg-paper-50 disabled:opacity-50"
+          >
+            {importing ? "导入中…" : "导入备份"}
+          </button>
+          <span className="text-xs text-ink-400">覆盖式恢复，导入后页面会自动刷新</span>
+        </div>
       </section>
     </div>
   );

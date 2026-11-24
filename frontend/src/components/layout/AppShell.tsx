@@ -1,6 +1,7 @@
-import { useEffect } from "react";
-import { NavLink, Outlet } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { NavLink, Outlet, useNavigate } from "react-router-dom";
 
+import MusicPlayer from "../player/MusicPlayer";
 import { useSubjectStore } from "../../stores/subjectStore";
 
 const navItems = [
@@ -13,20 +14,37 @@ const navItems = [
 
 export default function AppShell() {
   const load = useSubjectStore((state) => state.load);
+  const navigate = useNavigate();
+  const [keyword, setKeyword] = useState("");
 
   useEffect(() => {
     void load();
   }, [load]);
 
+  function handleSearch(event: React.FormEvent) {
+    event.preventDefault();
+    if (!keyword.trim()) return;
+    navigate(`/search?q=${encodeURIComponent(keyword.trim())}`);
+  }
+
   return (
     <div className="flex h-full min-h-screen bg-paper-100">
       <aside className="flex w-56 shrink-0 flex-col border-r border-paper-200 bg-white/90 px-3 py-5">
-        <div className="mb-8 px-2">
+        <div className="mb-5 px-2">
           <div className="text-lg font-bold tracking-tight text-ink-950">
             Learn<span className="text-brand-600">Loop</span>
           </div>
           <p className="mt-1 text-xs text-ink-400">学习与保研规划</p>
         </div>
+
+        <form onSubmit={handleSearch} className="mb-4 px-1">
+          <input
+            value={keyword}
+            onChange={(event) => setKeyword(event.target.value)}
+            placeholder="搜索资料 / 错题…"
+            className="w-full rounded-lg border border-paper-200 px-2.5 py-1.5 text-xs outline-none focus:border-brand-500"
+          />
+        </form>
 
         <nav className="flex flex-col gap-1">
           {navItems.map((item) => (
@@ -54,7 +72,7 @@ export default function AppShell() {
         <div className="mt-auto rounded-lg bg-paper-100 px-3 py-2.5 text-xs leading-relaxed text-ink-400">
           数据存在本机
           <br />
-          M3 · 学习闭环已打通
+          学习 + 保研闭环
         </div>
       </aside>
 
@@ -63,6 +81,8 @@ export default function AppShell() {
           <Outlet />
         </main>
       </div>
+
+      <MusicPlayer />
     </div>
   );
 }

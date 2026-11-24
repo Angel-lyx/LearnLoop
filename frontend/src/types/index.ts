@@ -97,3 +97,48 @@ export interface MindMapDoc {
   created_at: string;
   updated_at: string;
 }
+
+export type Dimension = "德" | "智" | "体" | "美" | "劳";
+
+export interface Course {
+  id: number;
+  name: string;
+  credits: number;
+  score: number;
+  category: "required" | "elective";
+  term: string;
+}
+
+export interface ScoreRule {
+  id: number;
+  dimension: Dimension;
+  name: string;
+  score: number;
+}
+
+export interface BonusItem {
+  id: number;
+  dimension: Dimension;
+  title: string;
+  score: number;
+  note: string;
+}
+
+export interface ResearchOverview {
+  courses: {
+    count: number;
+    credits: number;
+    weighted_average: number;
+    gpa: number;
+  };
+  zongce: {
+    dimensions: Record<string, number>;
+    total: number;
+  };
+  composite: {
+    course_weight: number;
+    course_score: number;
+    zongce_score: number;
+    score: number;
+  };
+}

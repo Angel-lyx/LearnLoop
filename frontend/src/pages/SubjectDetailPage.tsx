@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useParams, useSearchParams } from "react-router-dom";
 
 import ExamPanel from "../components/exams/ExamPanel";
 import MindMapPanel from "../components/maps/MindMapPanel";
@@ -23,7 +23,13 @@ export default function SubjectDetailPage() {
   const subject = useSubjectStore((state) =>
     state.items.find((item) => item.id === subjectId),
   );
-  const [tab, setTab] = useState<Tab>("materials");
+  const [params] = useSearchParams();
+  const requested = params.get("tab") as Tab | null;
+  const [tab, setTab] = useState<Tab>(
+    requested && ["materials", "mistakes", "maps", "exams"].includes(requested)
+      ? requested
+      : "materials",
+  );
 
   if (!Number.isFinite(subjectId)) {
     return <p className="text-sm text-ink-400">学科不存在</p>;

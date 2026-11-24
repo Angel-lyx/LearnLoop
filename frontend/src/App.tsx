@@ -9,6 +9,7 @@ import ReviewPage from "./pages/ReviewPage";
 import SettingsPage from "./pages/SettingsPage";
 import SubjectDetailPage from "./pages/SubjectDetailPage";
 import SubjectsPage from "./pages/SubjectsPage";
+import SearchPage from "./pages/SearchPage";
 
 // mind-elixir 体积较大，进入导图页时才加载
 const MindMapPage = lazy(() => import("./pages/MindMapPage"));
@@ -38,6 +39,7 @@ export default function App() {
           }
         />
         <Route path="review" element={<ReviewPage />} />
+        <Route path="search" element={<SearchPage />} />
         <Route path="research" element={<ResearchPage />} />
         <Route path="settings" element={<SettingsPage />} />
         <Route path="*" element={<Navigate to="/" replace />} />

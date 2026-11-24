@@ -1,44 +1,559 @@
-const modules = [
-  {
-    title: "必修成绩",
-    desc: "上传成绩单识别课程与学分，只算必修，自动算加权与 GPA",
-  },
-  {
-    title: "综测",
-    desc: "录入学院细则，加分材料自动归类到德智体美劳",
-  },
-  {
-    title: "综合成绩与模拟",
-    desc: "按学校权重合成总分，模拟提分后的结果",
-  },
-];
+import { useEffect, useState } from "react";
+
+import { researchApi, type RuleDraft } from "../lib/api";
+import type {
+  BonusItem,
+  Course,
+  Dimension,
+  ResearchOverview,
+  ScoreRule,
+} from "../types";
+
+const DIMENSIONS: Dimension[] = ["德", "智", "体", "美", "劳"];
+type Tab = "courses" | "zongce" | "composite";
 
 export default function ResearchPage() {
+  const [tab, setTab] = useState<Tab>("courses");
+  const [overview, setOverview] = useState<ResearchOverview | null>(null);
+  const [courses, setCourses] = useState<Course[]>([]);
+  const [rules, setRules] = useState<ScoreRule[]>([]);
+  const [bonus, setBonus] = useState<BonusItem[]>([]);
+  const [error, setError] = useState<string | null>(null);
+
+  async function refresh() {
+    try {
+      const [nextOverview, nextCourses, nextRules, nextBonus] = await Promise.all([
+        researchApi.overview(),
+        researchApi.courses(),
+        researchApi.rules(),
+        researchApi.bonus(),
+      ]);
+      setOverview(nextOverview);
+      setCourses(nextCourses);
+      setRules(nextRules);
+      setBonus(nextBonus);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "加载失败");
+    }
+  }
+
+  useEffect(() => {
+    void refresh();
+  }, []);
+
   return (
     <div className="space-y-6">
       <header>
         <h1 className="text-2xl font-semibold text-ink-950">保研</h1>
         <p className="mt-1 text-sm text-ink-400">
-          必修成绩与综测两套分数，最终合成综合成绩
+          必修成绩与综测两套分数，按学校权重合成综合成绩
         </p>
       </header>
 
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-        {modules.map((item) => (
-          <div
-            key={item.title}
-            className="rounded-xl border border-paper-200 bg-white p-5"
+      <div className="flex items-center gap-1 border-b border-paper-200">
+        {(
+          [
+            ["courses", "必修成绩"],
+            ["zongce", "综测"],
+            ["composite", "综合成绩"],
+          ] as const
+        ).map(([value, label]) => (
+          <button
+            key={value}
+            onClick={() => setTab(value)}
+            className={`-mb-px border-b-2 px-4 py-2 text-sm ${
+              tab === value
+                ? "border-brand-500 font-medium text-brand-600"
+                : "border-transparent text-ink-500 hover:text-ink-800"
+            }`}
           >
-            <div className="flex items-center justify-between">
-              <h2 className="text-sm font-medium text-ink-950">{item.title}</h2>
-              <span className="rounded-full bg-paper-100 px-2 py-0.5 text-[11px] text-ink-400">
-                M4
+            {label}
+          </button>
+        ))}
+      </div>
+
+      {error && (
+        <div className="flex items-center justify-between rounded-lg bg-red-50 px-4 py-2.5 text-sm text-red-600">
+          <span>{error}</span>
+          <button onClick={() => setError(null)} className="text-xs underline">
+            关闭
+          </button>
+        </div>
+      )}
+
+      {tab === "courses" && (
+        <CoursesTab
+          courses={courses}
+          overview={overview}
+          onChanged={refresh}
+          onError={setError}
+        />
+      )}
+      {tab === "zongce" && (
+        <ZongceTab
+          rules={rules}
+          bonus={bonus}
+          overview={overview}
+          onChanged={refresh}
+          onError={setError}
+        />
+      )}
+      {tab === "composite" && (
+        <CompositeTab overview={overview} onChanged={refresh} onError={setError} />
+      )}
+    </div>
+  );
+}
+
+function Stat({ label, value, hint }: { label: string; value: string; hint?: string }) {
+  return (
+    <div className="rounded-xl border border-paper-200 bg-white p-4">
+      <div className="text-xs text-ink-400">{label}</div>
+      <div className="mt-2 text-2xl font-semibold text-ink-950">{value}</div>
+      {hint && <div className="mt-1 text-xs text-ink-400">{hint}</div>}
+    </div>
+  );
+}
+
+function CoursesTab({
+  courses,
+  overview,
+  onChanged,
+  onError,
+}: {
+  courses: Course[];
+  overview: ResearchOverview | null;
+  onChanged: () => Promise<void>;
+  onError: (message: string | null) => void;
+}) {
+  const [name, setName] = useState("");
+  const [credits, setCredits] = useState("3");
+  const [score, setScore] = useState("");
+  const [category, setCategory] = useState<"required" | "elective">("required");
+
+  async function handleAdd(event: React.FormEvent) {
+    event.preventDefault();
+    const creditValue = Number(credits);
+    const scoreValue = Number(score);
+    if (!name.trim() || !creditValue || Number.isNaN(scoreValue)) return;
+    if (scoreValue < 0 || scoreValue > 100) {
+      onError("成绩需要在 0-100 之间");
+      return;
+    }
+    try {
+      await researchApi.addCourse({
+        name: name.trim(),
+        credits: creditValue,
+        score: scoreValue,
+        category,
+        term: "",
+      });
+      setName("");
+      setScore("");
+      await onChanged();
+    } catch (err) {
+      onError(err instanceof Error ? err.message : "添加失败");
+    }
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <Stat
+          label="加权平均分"
+          value={overview ? overview.courses.weighted_average.toFixed(2) : "—"}
+          hint="仅统计必修课"
+        />
+        <Stat
+          label="GPA（4.0）"
+          value={overview ? overview.courses.gpa.toFixed(2) : "—"}
+          hint="按学分加权"
+        />
+        <Stat label="必修学分" value={overview ? String(overview.courses.credits) : "—"} />
+        <Stat label="必修门数" value={overview ? String(overview.courses.count) : "—"} />
+      </div>
+
+      <form
+        onSubmit={handleAdd}
+        className="flex flex-wrap items-center gap-2 rounded-xl border border-paper-200 bg-white p-4"
+      >
+        <input
+          value={name}
+          onChange={(event) => setName(event.target.value)}
+          placeholder="课程名称"
+          className="min-w-[160px] flex-1 rounded-lg border border-paper-200 px-3 py-2 text-sm outline-none focus:border-brand-500"
+        />
+        <input
+          value={credits}
+          onChange={(event) => setCredits(event.target.value)}
+          type="number"
+          step="0.5"
+          min="0.5"
+          placeholder="学分"
+          className="w-20 rounded-lg border border-paper-200 px-2 py-2 text-sm outline-none focus:border-brand-500"
+        />
+        <input
+          value={score}
+          onChange={(event) => setScore(event.target.value)}
+          type="number"
+          min="0"
+          max="100"
+          placeholder="成绩"
+          className="w-20 rounded-lg border border-paper-200 px-2 py-2 text-sm outline-none focus:border-brand-500"
+        />
+        <select
+          value={category}
+          onChange={(event) => setCategory(event.target.value as "required" | "elective")}
+          className="rounded-lg border border-paper-200 px-2 py-2 text-sm outline-none focus:border-brand-500"
+        >
+          <option value="required">必修</option>
+          <option value="elective">选修</option>
+        </select>
+        <button
+          type="submit"
+          className="rounded-lg bg-brand-500 px-4 py-2 text-sm font-medium text-white hover:bg-brand-600"
+        >
+          添加课程
+        </button>
+      </form>
+
+      {courses.length === 0 ? (
+        <div className="rounded-xl border border-dashed border-paper-200 bg-white px-6 py-12 text-center">
+          <p className="text-sm text-ink-600">还没有课程</p>
+          <p className="mt-1 text-xs text-ink-400">
+            先手动添加几门必修课，或者等 M4.1 的成绩单识别
+          </p>
+        </div>
+      ) : (
+        <ul className="divide-y divide-paper-200 overflow-hidden rounded-xl border border-paper-200 bg-white">
+          {courses.map((course) => (
+            <li key={course.id} className="group flex items-center gap-3 px-4 py-3">
+              <span className="min-w-0 flex-1 truncate text-sm text-ink-800">
+                {course.name}
               </span>
+              <span className="rounded bg-paper-100 px-1.5 py-0.5 text-[11px] text-ink-600">
+                {course.category === "required" ? "必修" : "选修"}
+              </span>
+              <span className="w-14 text-right text-xs text-ink-500">
+                {course.credits} 学分
+              </span>
+              <span className="w-12 text-right text-sm font-medium text-ink-800">
+                {course.score}
+              </span>
+              <button
+                onClick={async () => {
+                  await researchApi.removeCourse(course.id);
+                  await onChanged();
+                }}
+                className="text-xs text-ink-400 opacity-0 hover:text-red-500 group-hover:opacity-100"
+              >
+                删除
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+
+function ZongceTab({
+  rules,
+  bonus,
+  overview,
+  onChanged,
+  onError,
+}: {
+  rules: ScoreRule[];
+  bonus: BonusItem[];
+  overview: ResearchOverview | null;
+  onChanged: () => Promise<void>;
+  onError: (message: string | null) => void;
+}) {
+  const [dimension, setDimension] = useState<Dimension>("智");
+  const [title, setTitle] = useState("");
+  const [score, setScore] = useState("");
+  const [ruleText, setRuleText] = useState("");
+  const [parsing, setParsing] = useState(false);
+  const [drafts, setDrafts] = useState<RuleDraft[] | null>(null);
+
+  async function handleAdd(event: React.FormEvent) {
+    event.preventDefault();
+    const value = Number(score);
+    if (!title.trim() || Number.isNaN(value) || value <= 0) return;
+    try {
+      await researchApi.addBonus({ dimension, title: title.trim(), score: value });
+      setTitle("");
+      setScore("");
+      await onChanged();
+    } catch (err) {
+      onError(err instanceof Error ? err.message : "添加失败");
+    }
+  }
+
+  async function handleParse() {
+    if (!ruleText.trim()) return;
+    setParsing(true);
+    onError(null);
+    try {
+      setDrafts(await researchApi.parseRules(ruleText.trim()));
+    } catch (err) {
+      onError(err instanceof Error ? err.message : "解析失败");
+    } finally {
+      setParsing(false);
+    }
+  }
+
+  async function handleConfirmDrafts() {
+    if (!drafts) return;
+    try {
+      for (const draft of drafts) {
+        await researchApi.addRule(draft);
+      }
+      setDrafts(null);
+      setRuleText("");
+      await onChanged();
+    } catch (err) {
+      onError(err instanceof Error ? err.message : "导入失败");
+    }
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-5">
+        {DIMENSIONS.map((item) => (
+          <div
+            key={item}
+            className="rounded-xl border border-paper-200 bg-white p-3 text-center"
+          >
+            <div className="text-xs text-ink-400">{item}育</div>
+            <div className="mt-1 text-xl font-semibold text-ink-950">
+              {overview ? (overview.zongce.dimensions[item] ?? 0) : 0}
             </div>
-            <p className="mt-2 text-xs leading-relaxed text-ink-400">{item.desc}</p>
           </div>
         ))}
       </div>
+
+      <div className="rounded-xl border border-paper-200 bg-white p-4">
+        <div className="flex items-center justify-between">
+          <h2 className="text-sm font-medium text-ink-950">综测总分</h2>
+          <span className="text-xl font-semibold text-brand-600">
+            {overview ? overview.zongce.total : 0}
+          </span>
+        </div>
+      </div>
+
+      <form
+        onSubmit={handleAdd}
+        className="flex flex-wrap items-center gap-2 rounded-xl border border-paper-200 bg-white p-4"
+      >
+        <select
+          value={dimension}
+          onChange={(event) => setDimension(event.target.value as Dimension)}
+          className="rounded-lg border border-paper-200 px-2 py-2 text-sm outline-none focus:border-brand-500"
+        >
+          {DIMENSIONS.map((item) => (
+            <option key={item} value={item}>
+              {item}
+            </option>
+          ))}
+        </select>
+        <input
+          value={title}
+          onChange={(event) => setTitle(event.target.value)}
+          placeholder="加分项，例如：数学建模国一"
+          className="min-w-[180px] flex-1 rounded-lg border border-paper-200 px-3 py-2 text-sm outline-none focus:border-brand-500"
+        />
+        <input
+          value={score}
+          onChange={(event) => setScore(event.target.value)}
+          type="number"
+          step="0.5"
+          min="0"
+          placeholder="分值"
+          className="w-20 rounded-lg border border-paper-200 px-2 py-2 text-sm outline-none focus:border-brand-500"
+        />
+        <button
+          type="submit"
+          className="rounded-lg bg-brand-500 px-4 py-2 text-sm font-medium text-white hover:bg-brand-600"
+        >
+          添加加分
+        </button>
+      </form>
+
+      {bonus.length > 0 && (
+        <ul className="divide-y divide-paper-200 overflow-hidden rounded-xl border border-paper-200 bg-white">
+          {bonus.map((item) => (
+            <li key={item.id} className="group flex items-center gap-3 px-4 py-2.5">
+              <span className="w-6 text-center text-xs text-ink-500">{item.dimension}</span>
+              <span className="min-w-0 flex-1 truncate text-sm text-ink-800">
+                {item.title}
+              </span>
+              <span className="text-sm font-medium text-ink-800">+{item.score}</span>
+              <button
+                onClick={async () => {
+                  await researchApi.removeBonus(item.id);
+                  await onChanged();
+                }}
+                className="text-xs text-ink-400 opacity-0 hover:text-red-500 group-hover:opacity-100"
+              >
+                删除
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+
+      <section className="rounded-xl border border-paper-200 bg-white p-4">
+        <h2 className="text-sm font-medium text-ink-950">从细则生成加分项规则</h2>
+        <p className="mt-1 text-xs text-ink-400">
+          把学院细则粘贴进来，AI 会拆成「维度 + 名称 + 分值」，确认后写入规则库
+        </p>
+        <textarea
+          value={ruleText}
+          onChange={(event) => setRuleText(event.target.value)}
+          rows={3}
+          placeholder="例如：国家级学科竞赛一等奖 5 分；志愿服务满 50 小时 2 分……"
+          className="mt-2 w-full resize-y rounded-lg border border-paper-200 px-3 py-2 text-sm outline-none focus:border-brand-500"
+        />
+        <div className="mt-2 flex items-center gap-2">
+          <button
+            onClick={() => void handleParse()}
+            disabled={!ruleText.trim() || parsing}
+            className="rounded-lg border border-brand-500 px-3 py-1.5 text-xs font-medium text-brand-600 hover:bg-brand-50 disabled:opacity-50"
+          >
+            {parsing ? "解析中…" : "AI 解析细则"}
+          </button>
+          <span className="text-xs text-ink-400">
+            规则库当前 {rules.length} 条
+          </span>
+        </div>
+
+        {drafts && (
+          <div className="mt-3 rounded-lg bg-paper-50 p-3">
+            <p className="text-xs text-ink-500">识别到 {drafts.length} 条，确认后导入：</p>
+            <ul className="mt-2 space-y-1">
+              {drafts.map((draft, index) => (
+                <li key={index} className="flex items-center gap-2 text-sm text-ink-800">
+                  <span className="rounded bg-white px-1.5 py-0.5 text-[11px] text-ink-600">
+                    {draft.dimension}
+                  </span>
+                  <span className="flex-1 truncate">{draft.name}</span>
+                  <span className="text-xs text-ink-500">+{draft.score}</span>
+                </li>
+              ))}
+            </ul>
+            <div className="mt-2 flex gap-2">
+              <button
+                onClick={() => void handleConfirmDrafts()}
+                className="rounded-lg bg-brand-500 px-3 py-1.5 text-xs font-medium text-white hover:bg-brand-600"
+              >
+                确认导入
+              </button>
+              <button
+                onClick={() => setDrafts(null)}
+                className="text-xs text-ink-400 hover:text-ink-600"
+              >
+                取消
+              </button>
+            </div>
+          </div>
+        )}
+      </section>
+    </div>
+  );
+}
+
+function CompositeTab({
+  overview,
+  onChanged,
+  onError,
+}: {
+  overview: ResearchOverview | null;
+  onChanged: () => Promise<void>;
+  onError: (message: string | null) => void;
+}) {
+  const [weight, setWeight] = useState(overview?.composite.course_weight ?? 0.7);
+  const [target, setTarget] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    if (overview) setWeight(overview.composite.course_weight);
+  }, [overview]);
+
+  async function handleSave() {
+    setSaving(true);
+    try {
+      await researchApi.saveWeights(weight);
+      await onChanged();
+    } catch (err) {
+      onError(err instanceof Error ? err.message : "保存失败");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  const composite = overview?.composite.score ?? 0;
+  const targetValue = Number(target);
+  const gap = target && !Number.isNaN(targetValue) ? targetValue - composite : null;
+
+  return (
+    <div className="space-y-4">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+        <Stat
+          label="必修加权"
+          value={overview ? overview.composite.course_score.toFixed(2) : "—"}
+        />
+        <Stat
+          label="综测总分"
+          value={overview ? String(overview.composite.zongce_score) : "—"}
+        />
+        <Stat label="保研综合成绩" value={composite.toFixed(2)} hint="按下方权重合成" />
+      </div>
+
+      <section className="rounded-xl border border-paper-200 bg-white p-4">
+        <h2 className="text-sm font-medium text-ink-950">权重设置</h2>
+        <p className="mt-1 text-xs text-ink-400">
+          按学校规则调整：必修占比 {Math.round(weight * 100)}% · 综测占比{" "}
+          {Math.round((1 - weight) * 100)}%
+        </p>
+        <input
+          type="range"
+          min="0"
+          max="1"
+          step="0.05"
+          value={weight}
+          onChange={(event) => setWeight(Number(event.target.value))}
+          className="mt-3 w-full accent-[var(--color-brand-500)]"
+        />
+        <button
+          onClick={() => void handleSave()}
+          disabled={saving}
+          className="mt-3 rounded-lg bg-brand-500 px-3 py-1.5 text-xs font-medium text-white hover:bg-brand-600 disabled:opacity-50"
+        >
+          {saving ? "保存中…" : "保存权重"}
+        </button>
+      </section>
+
+      <section className="rounded-xl border border-paper-200 bg-white p-4">
+        <h2 className="text-sm font-medium text-ink-950">目标对照</h2>
+        <div className="mt-2 flex flex-wrap items-center gap-2 text-sm">
+          <span className="text-ink-500">目标分数</span>
+          <input
+            value={target}
+            onChange={(event) => setTarget(event.target.value)}
+            type="number"
+            step="0.1"
+            placeholder="例如 85"
+            className="w-24 rounded-lg border border-paper-200 px-2 py-1.5 text-sm outline-none focus:border-brand-500"
+          />
+          {gap !== null && (
+            <span className={gap > 0 ? "text-amber-600" : "text-green-600"}>
+              {gap > 0 ? `还差 ${gap.toFixed(2)} 分` : `已超出 ${Math.abs(gap).toFixed(2)} 分`}
+            </span>
+          )}
+        </div>
+      </section>
     </div>
   );
 }

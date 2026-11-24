@@ -2,10 +2,15 @@ import type {
   AISettings,
   Analysis,
   AnnotationPage,
+  BonusItem,
+  Course,
+  Dimension,
   Exam,
   Material,
   MindMapDoc,
   Mistake,
+  ResearchOverview,
+  ScoreRule,
   Subject,
   Task,
 } from "../types";
@@ -122,6 +127,54 @@ export const mapsApi = {
   remove: (mapId: number) => api.delete(`/maps/${mapId}`),
   generate: (subjectId: number) =>
     api.post<MindMapDoc>(`/subjects/${subjectId}/maps/generate`, {}),
+};
+
+export const researchApi = {
+  courses: () => api.get<Course[]>("/research/courses"),
+  addCourse: (payload: Omit<Course, "id">) =>
+    api.post<Course>("/research/courses", payload),
+  removeCourse: (courseId: number) => api.delete(`/research/courses/${courseId}`),
+  rules: () => api.get<ScoreRule[]>("/research/rules"),
+  addRule: (payload: { dimension: Dimension; name: string; score: number }) =>
+    api.post<ScoreRule>("/research/rules", payload),
+  removeRule: (ruleId: number) => api.delete(`/research/rules/${ruleId}`),
+  parseRules: (text: string) =>
+    api.post<RuleDraft[]>("/research/rules/parse", { text }),
+  parseRulesFile: (file: File) => postFile<RuleDraft[]>("/research/rules/parse-file", file),
+  bonus: () => api.get<BonusItem[]>("/research/bonus"),
+  addBonus: (payload: { dimension: Dimension; title: string; score: number }) =>
+    api.post<BonusItem>("/research/bonus", payload),
+  removeBonus: (bonusId: number) => api.delete(`/research/bonus/${bonusId}`),
+  weights: () => api.get<{ course_weight: number }>("/research/weights"),
+  saveWeights: (courseWeight: number) =>
+    api.put<{ course_weight: number }>("/research/weights", {
+      course_weight: courseWeight,
+    }),
+  overview: () => api.get<ResearchOverview>("/research/overview"),
+};
+
+export interface RuleDraft {
+  dimension: Dimension;
+  name: string;
+  score: number;
+}
+
+export interface SearchResult {
+  subjects: { id: number; name: string; color: string }[];
+  materials: { id: number; title: string; subject_id: number; kind: string }[];
+  mistakes: { id: number; question: string; subject_id: number; status: string }[];
+  maps: { id: number; title: string; subject_id: number }[];
+}
+
+export const searchApi = {
+  query: (keyword: string) =>
+    api.get<SearchResult>(`/search?q=${encodeURIComponent(keyword)}`),
+};
+
+export const backupApi = {
+  exportUrl: "/api/backup/export",
+  import: (file: File) =>
+    postFile<{ ok: number; uploads: number }>("/backup/import", file),
 };
 
 export const settingsApi = {
