@@ -53,7 +53,7 @@ export default function ExamPanel({ subjectId }: { subjectId: number }) {
         </p>
         <button
           onClick={() => setShowForm((value) => !value)}
-          className="rounded-lg bg-brand-500 px-3 py-1.5 text-sm font-medium text-white hover:bg-brand-600"
+          className="btn btn-primary"
         >
           {showForm ? "收起" : "录入考试"}
         </button>
@@ -81,7 +81,7 @@ export default function ExamPanel({ subjectId }: { subjectId: number }) {
       {showForm && (
         <form
           onSubmit={handleSubmit}
-          className="space-y-2 rounded-xl border border-paper-200 bg-white p-4"
+          className="card space-y-2 p-4"
         >
           <input
             value={title}
@@ -106,7 +106,7 @@ export default function ExamPanel({ subjectId }: { subjectId: number }) {
           <button
             type="submit"
             disabled={!title.trim() || !examDate}
-            className="rounded-lg bg-brand-500 px-3 py-1.5 text-xs font-medium text-white hover:bg-brand-600 disabled:opacity-50"
+            className="btn btn-primary text-xs"
           >
             保存考试
           </button>
@@ -125,7 +125,7 @@ export default function ExamPanel({ subjectId }: { subjectId: number }) {
           {items.map((exam) => (
             <li
               key={exam.id}
-              className="flex flex-wrap items-center gap-3 rounded-xl border border-paper-200 bg-white px-4 py-3"
+              className="card flex flex-wrap items-center gap-3 px-4 py-3"
             >
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2">
@@ -151,7 +151,7 @@ export default function ExamPanel({ subjectId }: { subjectId: number }) {
                 <button
                   onClick={() => void handlePlan(exam.id)}
                   disabled={busy || exam.days_left < 0}
-                  className="rounded-lg border border-brand-500 px-2.5 py-1 text-brand-600 hover:bg-brand-50 disabled:opacity-40"
+                  className="btn btn-soft !px-2.5 !py-1 text-xs"
                 >
                   生成复习计划
                 </button>

@@ -26,7 +26,7 @@ export default function MindMapPanel({ subjectId }: { subjectId: number }) {
         <button
           onClick={() => void handleGenerate()}
           disabled={generating}
-          className="rounded-lg bg-brand-500 px-3 py-1.5 text-sm font-medium text-white hover:bg-brand-600 disabled:opacity-50"
+          className="btn btn-primary"
         >
           {generating ? "生成中…" : "AI 生成导图"}
         </button>
@@ -51,7 +51,7 @@ export default function MindMapPanel({ subjectId }: { subjectId: number }) {
           </p>
         </div>
       ) : (
-        <ul className="divide-y divide-paper-200 overflow-hidden rounded-xl border border-paper-200 bg-white">
+        <ul className="card divide-y divide-paper-200 overflow-hidden">
           {items.map((map) => (
             <li
               key={map.id}

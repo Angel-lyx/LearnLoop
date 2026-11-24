@@ -38,21 +38,27 @@ export default function SubjectDetailPage() {
   return (
     <div className="space-y-6">
       <header>
-        <Link to="/subjects" className="text-xs text-ink-400 hover:text-brand-600">
+        <Link
+          to="/subjects"
+          className="text-xs font-medium text-ink-400 transition-colors hover:text-brand-600"
+        >
           ← 返回学科
         </Link>
-        <h1 className="mt-1 flex items-center gap-2 text-2xl font-semibold text-ink-950">
+        <h1 className="page-title mt-2 flex items-center gap-3">
           <span
             aria-hidden
-            className="h-3 w-3 rounded-full"
-            style={{ backgroundColor: subject?.color ?? "#4F7CFF" }}
+            className="h-9 w-9 rounded-xl"
+            style={{
+              background: `linear-gradient(145deg, ${subject?.color ?? "#6F5CE8"}, ${subject?.color ?? "#6F5CE8"}aa)`,
+              boxShadow: `0 8px 18px -10px ${subject?.color ?? "#6F5CE8"}`,
+            }}
           />
           {subject?.name ?? "学科"}
         </h1>
-        <p className="mt-1 text-sm text-ink-400">资料、错题、导图与考试都会挂在这里</p>
+        <p className="muted mt-1.5">资料、错题、导图与考试都会挂在这里</p>
       </header>
 
-      <div className="flex items-center gap-1 border-b border-paper-200">
+      <div className="tabbar">
         {(
           [
             ["materials", "资料"],
@@ -64,11 +70,7 @@ export default function SubjectDetailPage() {
           <button
             key={value}
             onClick={() => setTab(value)}
-            className={`-mb-px border-b-2 px-4 py-2 text-sm ${
-              tab === value
-                ? "border-brand-500 font-medium text-brand-600"
-                : "border-transparent text-ink-500 hover:text-ink-800"
-            }`}
+            className={`tab ${tab === value ? "tab-active" : ""}`}
           >
             {label}
           </button>
@@ -121,7 +123,7 @@ function MaterialPanel({ subjectId }: { subjectId: number }) {
           />
           <label
             htmlFor="material-file"
-            className="cursor-pointer rounded-lg bg-brand-500 px-4 py-2 text-sm font-medium text-white hover:bg-brand-600"
+            className="btn btn-primary cursor-pointer"
           >
             {uploading ? "上传中…" : "上传资料"}
           </label>
@@ -145,7 +147,7 @@ function MaterialPanel({ subjectId }: { subjectId: number }) {
           <p className="mt-1 text-xs text-ink-400">上传后可以在线阅读并做多色批注</p>
         </div>
       ) : (
-        <ul className="divide-y divide-paper-200 overflow-hidden rounded-xl border border-paper-200 bg-white">
+        <ul className="card divide-y divide-paper-200 overflow-hidden">
           {items.map((material) => (
             <li
               key={material.id}

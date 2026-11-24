@@ -49,14 +49,12 @@ export default function MaterialViewerPage() {
           >
             ← 返回学科
           </Link>
-          <h1 className="mt-1 truncate text-xl font-semibold text-ink-950">
-            {material.title}
-          </h1>
+          <h1 className="page-title mt-1.5 truncate">{material.title}</h1>
         </div>
         <a
           href={fileUrl}
           download={material.filename}
-          className="shrink-0 rounded-lg border border-paper-200 px-3 py-1.5 text-xs text-ink-600 hover:bg-white"
+          className="btn btn-ghost shrink-0 text-xs"
         >
           下载原件
         </a>

@@ -101,6 +101,10 @@ async function main() {
     `批注层完整位于视口内（y=${Math.round(box.y)}…${Math.round(box.y + box.height)}）`,
   );
 
+  // 选一个自定义配色 + 粗笔，验证颜色与粗细生效
+  await page.getByRole("button", { name: "画笔颜色 #6F5CE8" }).click();
+  await page.getByRole("button", { name: "粗", exact: true }).click();
+
   await page.mouse.move(box.x + 60, box.y + 60);
   await page.mouse.down();
   for (let i = 1; i <= 12; i += 1) {
@@ -119,6 +123,12 @@ async function main() {
     ),
     "保存内容里包含笔迹对象",
   );
+
+  const stroke = JSON.parse(annotations[0].payload).find(
+    (obj) => String(obj.type).toLowerCase() === "path",
+  );
+  assert(stroke?.stroke === "#6F5CE8", `笔迹颜色生效（${stroke?.stroke}）`);
+  assert(Number(stroke?.strokeWidth) === 6, `笔迹粗细生效（${stroke?.strokeWidth}）`);
   await page.screenshot({ path: path.join(OUT, "2-drawn.png") });
 
   await page.getByRole("button", { name: "文字", exact: true }).click();

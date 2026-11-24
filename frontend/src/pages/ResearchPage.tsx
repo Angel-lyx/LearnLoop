@@ -48,13 +48,13 @@ export default function ResearchPage() {
   return (
     <div className="space-y-6">
       <header>
-        <h1 className="text-2xl font-semibold text-ink-950">保研</h1>
-        <p className="mt-1 text-sm text-ink-400">
+        <h1 className="page-title">保研</h1>
+        <p className="muted mt-1.5">
           必修成绩与综测两套分数，按学校权重合成综合成绩
         </p>
       </header>
 
-      <div className="flex items-center gap-1 border-b border-paper-200">
+      <div className="tabbar">
         {(
           [
             ["courses", "必修成绩"],
@@ -65,11 +65,7 @@ export default function ResearchPage() {
           <button
             key={value}
             onClick={() => setTab(value)}
-            className={`-mb-px border-b-2 px-4 py-2 text-sm ${
-              tab === value
-                ? "border-brand-500 font-medium text-brand-600"
-                : "border-transparent text-ink-500 hover:text-ink-800"
-            }`}
+            className={`tab ${tab === value ? "tab-active" : ""}`}
           >
             {label}
           </button>
@@ -111,10 +107,12 @@ export default function ResearchPage() {
 
 function Stat({ label, value, hint }: { label: string; value: string; hint?: string }) {
   return (
-    <div className="rounded-xl border border-paper-200 bg-white p-4">
+    <div className="card p-4">
       <div className="text-xs text-ink-400">{label}</div>
-      <div className="mt-2 text-2xl font-semibold text-ink-950">{value}</div>
-      {hint && <div className="mt-1 text-xs text-ink-400">{hint}</div>}
+      <div className="mt-1.5 text-2xl font-bold tracking-tight text-ink-950">
+        {value}
+      </div>
+      {hint && <div className="mt-1 text-[11px] text-ink-400">{hint}</div>}
     </div>
   );
 }
@@ -227,7 +225,7 @@ function CoursesTab({
           value={name}
           onChange={(event) => setName(event.target.value)}
           placeholder="课程名称"
-          className="min-w-[160px] flex-1 rounded-lg border border-paper-200 px-3 py-2 text-sm outline-none focus:border-brand-500"
+          className="input min-w-[160px] flex-1"
         />
         <input
           value={credits}
@@ -236,7 +234,7 @@ function CoursesTab({
           step="0.5"
           min="0.5"
           placeholder="学分"
-          className="w-20 rounded-lg border border-paper-200 px-2 py-2 text-sm outline-none focus:border-brand-500"
+          className="input !w-20"
         />
         <input
           value={score}
@@ -245,7 +243,7 @@ function CoursesTab({
           min="0"
           max="100"
           placeholder="成绩"
-          className="w-20 rounded-lg border border-paper-200 px-2 py-2 text-sm outline-none focus:border-brand-500"
+          className="input !w-20"
         />
         <select
           value={category}
@@ -257,7 +255,7 @@ function CoursesTab({
         </select>
         <button
           type="submit"
-          className="rounded-lg bg-brand-500 px-4 py-2 text-sm font-medium text-white hover:bg-brand-600"
+          className="btn btn-primary"
         >
           添加课程
         </button>
@@ -275,7 +273,7 @@ function CoursesTab({
           />
           <label
             htmlFor="course-file"
-            className="cursor-pointer rounded-lg border border-brand-500 px-3 py-1.5 text-xs font-medium text-brand-600 hover:bg-brand-50"
+            className="btn btn-soft cursor-pointer text-xs"
           >
             {busy && !drafts ? "识别中…" : "上传成绩单识别"}
           </label>
@@ -343,7 +341,7 @@ function CoursesTab({
               <button
                 onClick={() => void confirmDrafts()}
                 disabled={busy || drafts.length === 0}
-                className="rounded-lg bg-brand-500 px-3 py-1.5 text-xs font-medium text-white hover:bg-brand-600 disabled:opacity-50"
+                className="btn btn-primary text-xs"
               >
                 {busy ? "导入中…" : "确认导入"}
               </button>
@@ -553,7 +551,7 @@ function ZongceTab({
           value={title}
           onChange={(event) => setTitle(event.target.value)}
           placeholder="加分项，例如：数学建模国一"
-          className="min-w-[180px] flex-1 rounded-lg border border-paper-200 px-3 py-2 text-sm outline-none focus:border-brand-500"
+          className="input min-w-[180px] flex-1"
         />
         <input
           value={score}
@@ -562,11 +560,11 @@ function ZongceTab({
           step="0.5"
           min="0"
           placeholder="分值"
-          className="w-20 rounded-lg border border-paper-200 px-2 py-2 text-sm outline-none focus:border-brand-500"
+          className="input !w-20"
         />
         <button
           type="submit"
-          className="rounded-lg bg-brand-500 px-4 py-2 text-sm font-medium text-white hover:bg-brand-600"
+          className="btn btn-primary"
         >
           添加加分
         </button>
@@ -668,7 +666,7 @@ function ZongceTab({
           <button
             onClick={() => void handleParse()}
             disabled={!ruleText.trim() || parsing}
-            className="rounded-lg border border-brand-500 px-3 py-1.5 text-xs font-medium text-brand-600 hover:bg-brand-50 disabled:opacity-50"
+            className="btn btn-soft text-xs"
           >
             {parsing ? "解析中…" : "AI 解析细则"}
           </button>
@@ -682,7 +680,7 @@ function ZongceTab({
           />
           <label
             htmlFor="rule-file"
-            className="cursor-pointer rounded-lg border border-paper-200 px-3 py-1.5 text-xs text-ink-600 hover:bg-paper-50"
+            className="btn btn-ghost cursor-pointer text-xs"
           >
             上传细则文件/截图
           </label>

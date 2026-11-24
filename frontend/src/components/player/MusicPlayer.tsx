@@ -43,7 +43,7 @@ export default function MusicPlayer() {
   return (
     <div className="fixed bottom-5 right-5 z-40">
       {open ? (
-        <div className="w-72 rounded-2xl border border-paper-200 bg-white/95 p-3 shadow-lg backdrop-blur">
+        <div className="card w-72 p-3 backdrop-blur" style={{ boxShadow: "var(--shadow-float)" }}>
           <div className="flex items-center justify-between">
             <span className="text-xs font-medium text-ink-600">音乐</span>
             <button
@@ -171,7 +171,8 @@ export default function MusicPlayer() {
       ) : (
         <button
           onClick={() => setOpen(true)}
-          className="flex items-center gap-2 rounded-full border border-paper-200 bg-white px-4 py-2.5 text-sm text-ink-700 shadow-lg hover:border-brand-500"
+          className="flex items-center gap-2 rounded-full border border-paper-200 bg-white px-4 py-2.5 text-sm text-ink-700 transition-transform hover:-translate-y-0.5 hover:border-brand-300"
+          style={{ boxShadow: "var(--shadow-float)" }}
         >
           <span aria-hidden>🎵</span>
           <span className="max-w-32 truncate">

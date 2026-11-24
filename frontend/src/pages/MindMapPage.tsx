@@ -90,9 +90,7 @@ export default function MindMapPage() {
           >
             ← 返回学科
           </Link>
-          <h1 className="mt-1 truncate text-xl font-semibold text-ink-950">
-            {map?.title ?? "思维导图"}
-          </h1>
+          <h1 className="page-title mt-1.5 truncate">{map?.title ?? "思维导图"}</h1>
         </div>
         <div className="flex items-center gap-3">
           <span className="text-xs text-ink-400">
@@ -105,7 +103,7 @@ export default function MindMapPage() {
           <button
             onClick={() => void handleSave()}
             disabled={!map || status === "saving"}
-            className="rounded-lg bg-brand-500 px-4 py-2 text-sm font-medium text-white hover:bg-brand-600 disabled:opacity-50"
+            className="btn btn-primary"
           >
             保存导图
           </button>

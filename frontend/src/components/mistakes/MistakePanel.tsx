@@ -24,7 +24,7 @@ export default function MistakePanel({ subjectId }: { subjectId: number }) {
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center gap-2">
-        <div className="flex items-center gap-1">
+        <div className="tabbar">
           {(
             [
               ["all", "全部"],
@@ -35,11 +35,7 @@ export default function MistakePanel({ subjectId }: { subjectId: number }) {
             <button
               key={value}
               onClick={() => setFilter(value)}
-              className={`rounded-md px-2.5 py-1 text-xs ${
-                filter === value
-                  ? "bg-brand-50 font-medium text-brand-600"
-                  : "text-ink-600 hover:bg-paper-100"
-              }`}
+              className={`tab !py-1.5 text-xs ${filter === value ? "tab-active" : ""}`}
             >
               {label}
             </button>
@@ -47,7 +43,7 @@ export default function MistakePanel({ subjectId }: { subjectId: number }) {
         </div>
         <button
           onClick={() => setShowForm((value) => !value)}
-          className="ml-auto rounded-lg bg-brand-500 px-3 py-1.5 text-sm font-medium text-white hover:bg-brand-600"
+          className="btn btn-primary ml-auto"
         >
           {showForm ? "收起" : "新增错题"}
         </button>
@@ -122,7 +118,7 @@ function MistakeCard({
   onRemove: () => void;
 }) {
   return (
-    <li className="rounded-xl border border-paper-200 bg-white">
+    <li className="card overflow-hidden">
       <div className="flex items-start gap-3 p-4">
         <div className="min-w-0 flex-1">
           <p className="whitespace-pre-wrap text-sm text-ink-800">{mistake.question}</p>
@@ -261,7 +257,7 @@ function MistakeForm({
   }
 
   return (
-    <div className="rounded-xl border border-paper-200 bg-white p-4">
+    <div className="card p-4">
       <div className="flex flex-wrap items-center gap-2">
         <input
           ref={fileRef}
@@ -273,7 +269,7 @@ function MistakeForm({
         />
         <label
           htmlFor={`mistake-file-${subjectId}`}
-          className="cursor-pointer rounded-lg border border-paper-200 px-3 py-1.5 text-xs text-ink-600 hover:bg-paper-50"
+          className="btn btn-ghost text-xs"
         >
           {busy === "transcribe" ? "识别中…" : "上传图片/PDF 识别"}
         </label>
@@ -285,7 +281,7 @@ function MistakeForm({
         onChange={(event) => setQuestion(event.target.value)}
         rows={4}
         placeholder="粘贴或输入题目"
-        className="mt-3 w-full resize-y rounded-lg border border-paper-200 px-3 py-2 text-sm outline-none focus:border-brand-500"
+        className="input mt-3 w-full resize-y"
       />
 
       <textarea
@@ -293,7 +289,7 @@ function MistakeForm({
         onChange={(event) => setAnswer(event.target.value)}
         rows={2}
         placeholder="我的答案（可选，帮助 AI 更准确地定位错误）"
-        className="mt-2 w-full resize-y rounded-lg border border-paper-200 px-3 py-2 text-sm outline-none focus:border-brand-500"
+        className="input mt-2 w-full resize-y"
       />
 
       {message && (
@@ -304,14 +300,14 @@ function MistakeForm({
         <button
           onClick={() => void handleAnalyze()}
           disabled={!question.trim() || busy !== "idle"}
-          className="rounded-lg border border-brand-500 px-3 py-1.5 text-xs font-medium text-brand-600 hover:bg-brand-50 disabled:opacity-50"
+          className="btn btn-soft text-xs"
         >
           {busy === "analyze" ? "分析中…" : "AI 分析错因与解法"}
         </button>
         <button
           onClick={() => void handleSave()}
           disabled={!question.trim() || saving}
-          className="rounded-lg bg-brand-500 px-3 py-1.5 text-xs font-medium text-white hover:bg-brand-600 disabled:opacity-50"
+          className="btn btn-primary text-xs"
         >
           {saving ? "保存中…" : "保存错题"}
         </button>

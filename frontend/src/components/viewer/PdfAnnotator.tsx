@@ -24,7 +24,35 @@ pdfjsLib.GlobalWorkerOptions.workerSrc = pdfWorkerUrl;
 type Tool = "pen" | "eraser" | "text" | "select";
 type SaveStatus = "idle" | "saving" | "saved" | "error";
 
-const COLORS = ["#FFD166", "#FF6B6B", "#4F7CFF", "#22B573"];
+const PRESET_COLORS = [
+  "#F2C14E",
+  "#EF6F6C",
+  "#6F5CE8",
+  "#2BB673",
+  "#3D9BE9",
+  "#E270B8",
+  "#111827",
+  "#9CA3AF",
+];
+const STROKE_WIDTHS = [
+  { label: "细", value: 2 },
+  { label: "中", value: 3.5 },
+  { label: "粗", value: 6 },
+  { label: "特粗", value: 10 },
+];
+const CUSTOM_COLORS_KEY = "learnloop.annotate.customColors";
+
+function loadCustomColors(): string[] {
+  try {
+    const raw = window.localStorage.getItem(CUSTOM_COLORS_KEY);
+    const parsed = raw ? (JSON.parse(raw) as unknown) : [];
+    return Array.isArray(parsed)
+      ? parsed.filter((item): item is string => typeof item === "string").slice(0, 8)
+      : [];
+  } catch {
+    return [];
+  }
+}
 
 export default function PdfAnnotator({
   materialId,
@@ -38,7 +66,7 @@ export default function PdfAnnotator({
   const fabricRef = useRef<fabric.Canvas | null>(null);
   const renderTaskRef = useRef<{ cancel: () => void } | null>(null);
   const toolRef = useRef<Tool>("pen");
-  const colorRef = useRef(COLORS[0]);
+  const colorRef = useRef(PRESET_COLORS[0]);
   const pageRef = useRef(1);
   const saveTimerRef = useRef<number | null>(null);
   const commitRef = useRef<() => void>(() => {});
@@ -49,7 +77,9 @@ export default function PdfAnnotator({
   const [page, setPage] = useState(1);
   const [zoom, setZoom] = useState(1.2);
   const [tool, setTool] = useState<Tool>("pen");
-  const [color, setColor] = useState(COLORS[0]);
+  const [color, setColor] = useState(PRESET_COLORS[0]);
+  const [width, setWidth] = useState(STROKE_WIDTHS[1].value);
+  const [customColors, setCustomColors] = useState<string[]>(() => loadCustomColors());
   const [history, setHistory] = useState<HistoryState>(EMPTY_HISTORY);
   const [status, setStatus] = useState<SaveStatus>("idle");
   const [error, setError] = useState<string | null>(null);
@@ -284,7 +314,7 @@ export default function PdfAnnotator({
       canvas.isDrawingMode = true;
       const brush = new fabric.PencilBrush(canvas);
       brush.color = color;
-      brush.width = 3;
+      brush.width = width;
       canvas.freeDrawingBrush = brush;
     } else {
       canvas.isDrawingMode = false;
@@ -292,7 +322,7 @@ export default function PdfAnnotator({
     canvas.selection = tool === "select" || tool === "text";
     canvas.defaultCursor =
       tool === "eraser" ? "cell" : tool === "text" ? "text" : "default";
-  }, [tool, color]);
+  }, [tool, color, width]);
 
   function handleUndo() {
     const next = undo(historyRef.current);
@@ -312,6 +342,14 @@ export default function PdfAnnotator({
     persist(next.present);
   }
 
+  function saveCustomColor() {
+    setCustomColors((prev) => {
+      const next = prev.includes(color) ? prev : [...prev, color].slice(-8);
+      window.localStorage.setItem(CUSTOM_COLORS_KEY, JSON.stringify(next));
+      return next;
+    });
+  }
+
   const statusText =
     status === "saving"
       ? "保存中…"
@@ -321,49 +359,94 @@ export default function PdfAnnotator({
           ? "保存失败"
           : "已同步";
 
+  const toolLabels: Record<Tool, string> = {
+    pen: "画笔",
+    text: "文字",
+    eraser: "橡皮擦",
+    select: "选择",
+  };
+
   return (
     <div className="space-y-3">
-      <div className="flex flex-wrap items-center gap-2 rounded-xl border border-paper-200 bg-white px-3 py-2">
-        <div className="flex items-center gap-1">
-          {(["pen", "text", "eraser", "select"] as Tool[]).map((item) => (
-            <button
-              key={item}
-              onClick={() => setTool(item)}
-              className={`rounded-md px-2.5 py-1 text-xs ${
-                tool === item
-                  ? "bg-brand-50 font-medium text-brand-600"
-                  : "text-ink-600 hover:bg-paper-100"
-              }`}
+      <div className="card px-3 py-2.5">
+        <div className="flex flex-wrap items-center gap-2.5">
+          <div className="tabbar">
+            {(["pen", "text", "eraser", "select"] as Tool[]).map((item) => (
+              <button
+                key={item}
+                onClick={() => setTool(item)}
+                className={`tab !px-2.5 !py-1.5 text-xs ${
+                  tool === item ? "tab-active" : ""
+                }`}
+              >
+                {toolLabels[item]}
+              </button>
+            ))}
+          </div>
+
+          <span className="h-5 w-px bg-paper-200" />
+
+          <div className="flex items-center gap-1.5">
+            {[...PRESET_COLORS, ...customColors].map((item) => (
+              <button
+                key={item}
+                aria-label={`画笔颜色 ${item}`}
+                aria-pressed={color === item}
+                onClick={() => setColor(item)}
+                className={`h-6 w-6 rounded-full transition-transform ${
+                  color === item
+                    ? "scale-115 ring-2 ring-brand-300 ring-offset-2"
+                    : "hover:scale-105"
+                }`}
+                style={{
+                  backgroundColor: item,
+                  boxShadow: "inset 0 0 0 1px rgba(21,21,42,.12)",
+                }}
+              />
+            ))}
+
+            <label
+              title="自定义颜色"
+              className="grid h-6 w-6 cursor-pointer place-items-center rounded-full border border-dashed border-paper-300 text-[11px] text-ink-400 transition-colors hover:border-brand-400 hover:text-brand-600"
             >
-              {item === "pen"
-                ? "画笔"
-                : item === "text"
-                  ? "文字"
-                  : item === "eraser"
-                    ? "橡皮擦"
-                    : "选择"}
-            </button>
-          ))}
-        </div>
+              +
+              <input
+                type="color"
+                value={color}
+                onChange={(event) => setColor(event.target.value)}
+                className="absolute h-0 w-0 opacity-0"
+                aria-label="自定义颜色"
+              />
+            </label>
 
-        <span className="mx-1 h-4 w-px bg-paper-200" />
-
-        <div className="flex items-center gap-1.5">
-          {COLORS.map((item) => (
             <button
-              key={item}
-              aria-label={`画笔颜色 ${item}`}
-              aria-pressed={color === item}
-              onClick={() => setColor(item)}
-              className={`h-5 w-5 rounded-full ${color === item ? "ring-2 ring-ink-400 ring-offset-1" : ""}`}
-              style={{ backgroundColor: item }}
-            />
-          ))}
+              onClick={saveCustomColor}
+              className="rounded-md px-1.5 py-0.5 text-[11px] text-brand-600 hover:bg-brand-50"
+            >
+              存为常用
+            </button>
+          </div>
+
+          <span className="h-5 w-px bg-paper-200" />
+
+          <div className="flex items-center gap-1">
+            {STROKE_WIDTHS.map((item) => (
+              <button
+                key={item.value}
+                onClick={() => setWidth(item.value)}
+                className={`rounded-md px-2 py-1 text-[11px] transition-colors ${
+                  width === item.value
+                    ? "bg-brand-50 font-medium text-brand-600"
+                    : "text-ink-500 hover:bg-paper-100"
+                }`}
+              >
+                {item.label}
+              </button>
+            ))}
+          </div>
         </div>
 
-        <span className="mx-1 h-4 w-px bg-paper-200" />
-
-        <div className="flex items-center gap-1">
+        <div className="mt-2 flex flex-wrap items-center gap-2 border-t border-dashed border-paper-200 pt-2">
           <button
             onClick={handleUndo}
             disabled={!canUndo(history)}
@@ -378,11 +461,9 @@ export default function PdfAnnotator({
           >
             重做
           </button>
-        </div>
 
-        <span className="mx-1 h-4 w-px bg-paper-200" />
+          <span className="h-5 w-px bg-paper-200" />
 
-        <div className="flex items-center gap-1">
           <button
             onClick={() => setZoom((z) => clampZoom(z - 0.2))}
             disabled={zoom <= MIN_ZOOM}
@@ -390,7 +471,7 @@ export default function PdfAnnotator({
           >
             −
           </button>
-          <span className="w-12 text-center text-xs text-ink-600">
+          <span className="w-12 text-center text-xs tabular-nums text-ink-600">
             {Math.round(zoom * 100)}%
           </span>
           <button
@@ -400,11 +481,9 @@ export default function PdfAnnotator({
           >
             +
           </button>
-        </div>
 
-        <span className="mx-1 h-4 w-px bg-paper-200" />
+          <span className="h-5 w-px bg-paper-200" />
 
-        <div className="flex items-center gap-1">
           <button
             onClick={() => setPage((p) => clampPage(p - 1, numPages))}
             disabled={page <= 1}
@@ -412,7 +491,7 @@ export default function PdfAnnotator({
           >
             上一页
           </button>
-          <span className="text-xs text-ink-600">
+          <span className="text-xs tabular-nums text-ink-600">
             {page} / {numPages}
           </span>
           <button
@@ -422,18 +501,31 @@ export default function PdfAnnotator({
           >
             下一页
           </button>
-        </div>
 
-        <span className="ml-auto text-xs text-ink-400">{statusText}</span>
+          <span className="ml-auto flex items-center gap-1.5 text-xs text-ink-400">
+            <span
+              className={`h-1.5 w-1.5 rounded-full ${
+                status === "error"
+                  ? "bg-red-500"
+                  : status === "saving"
+                    ? "bg-amber-500"
+                    : "bg-emerald-500"
+              }`}
+            />
+            {statusText}
+          </span>
+        </div>
       </div>
 
       {error && (
-        <div className="rounded-lg bg-red-50 px-4 py-2 text-sm text-red-600">{error}</div>
+        <div className="rounded-xl border border-red-100 bg-red-50 px-4 py-2 text-sm text-red-600">
+          {error}
+        </div>
       )}
 
-      <div className="overflow-auto rounded-xl border border-paper-200 bg-paper-100 p-4">
-        <div className="relative mx-auto w-fit shadow-sm">
-          <canvas ref={pdfCanvasRef} className="block bg-white" />
+      <div className="card overflow-auto p-4">
+        <div className="relative mx-auto w-fit rounded-lg shadow-[0_2px_6px_rgba(21,21,42,.08),0_24px_60px_-30px_rgba(74,58,180,.45)]">
+          <canvas ref={pdfCanvasRef} className="block rounded-lg bg-white" />
           {/* fabric 会把 canvas 包进 .canvas-container，这层负责把它压在 PDF 上方 */}
           <div className="absolute inset-0">
             <canvas ref={fabricElRef} />

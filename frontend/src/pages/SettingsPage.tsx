@@ -103,8 +103,8 @@ export default function SettingsPage() {
   return (
     <div className="space-y-6">
       <header>
-        <h1 className="text-2xl font-semibold text-ink-950">设置</h1>
-        <p className="mt-1 text-sm text-ink-400">大模型密钥与数据管理</p>
+        <h1 className="page-title">设置</h1>
+        <p className="muted mt-1.5">大模型密钥与数据管理</p>
       </header>
 
       {message && (
@@ -117,7 +117,7 @@ export default function SettingsPage() {
         </div>
       )}
 
-      <section className="rounded-xl border border-paper-200 bg-white p-5">
+      <section className="card p-5">
         <div className="flex items-center justify-between">
           <h2 className="text-sm font-medium text-ink-950">DeepSeek API Key</h2>
           <span
@@ -180,7 +180,7 @@ export default function SettingsPage() {
         </dl>
       </section>
 
-      <section className="rounded-xl border border-paper-200 bg-white p-5">
+      <section className="card p-5">
         <h2 className="text-sm font-medium text-ink-950">数据备份</h2>
         <p className="mt-1 text-xs text-ink-400">
           导出包含数据库与所有上传文件的压缩包；导入会覆盖当前数据，请先在导出里留一份

@@ -33,8 +33,8 @@ export default function ReviewPage() {
   return (
     <div className="space-y-6">
       <header>
-        <h1 className="text-2xl font-semibold text-ink-950">复习计划</h1>
-        <p className="mt-1 text-sm text-ink-400">
+        <h1 className="page-title">复习计划</h1>
+        <p className="muted mt-1.5">
           今日任务 {doneCount}/{items.length} 已完成 · 逾期未完成的会自动顺延
         </p>
       </header>
@@ -165,12 +165,12 @@ function TaskRow({
   onRemove: () => void;
 }) {
   return (
-    <li className="group flex items-center gap-3 rounded-lg border border-paper-200 bg-white px-4 py-2.5">
+    <li className="card group flex items-center gap-3 px-4 py-3">
       <input
         type="checkbox"
         checked={done}
         onChange={onToggle}
-        className="h-4 w-4 accent-[var(--color-brand-500)]"
+        className="h-4 w-4 rounded border-paper-300 accent-[var(--color-brand-500)]"
       />
       <span
         className={`flex-1 text-sm ${done ? "text-ink-400 line-through" : "text-ink-800"}`}
