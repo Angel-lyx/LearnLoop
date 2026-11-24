@@ -100,3 +100,36 @@ class MindMap(SQLModel, table=True):
     data: str = Field(default="{}")
     created_at: datetime = Field(default_factory=utcnow)
     updated_at: datetime = Field(default_factory=utcnow)
+
+
+class Course(SQLModel, table=True):
+    """必修课成绩。加权平均与 GPA 由本地计算。"""
+
+    id: int | None = Field(default=None, primary_key=True)
+    name: str = Field(max_length=120)
+    credits: float = Field(gt=0, le=30)
+    score: float = Field(ge=0, le=100)
+    category: str = Field(default="required", max_length=16)  # required / elective
+    term: str = Field(default="", max_length=40)
+    created_at: datetime = Field(default_factory=utcnow)
+
+
+class ScoreRule(SQLModel, table=True):
+    """综测加分项模板（德智体美劳下的具体条目与分值）。"""
+
+    id: int | None = Field(default=None, primary_key=True)
+    dimension: str = Field(max_length=20)
+    name: str = Field(max_length=120)
+    score: float = Field(ge=0, le=100)
+    created_at: datetime = Field(default_factory=utcnow)
+
+
+class BonusItem(SQLModel, table=True):
+    """已获得的加分材料，按维度累加。"""
+
+    id: int | None = Field(default=None, primary_key=True)
+    dimension: str = Field(max_length=20)
+    title: str = Field(max_length=200)
+    score: float = Field(ge=0, le=100)
+    note: str = Field(default="", max_length=500)
+    created_at: datetime = Field(default_factory=utcnow)

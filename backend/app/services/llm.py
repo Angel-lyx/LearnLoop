@@ -29,6 +29,14 @@ MAP_SYSTEM = """你是课程助教，负责把学科内容整理成思维导图�
 {"topic": "根主题", "children": [{"topic": "一级分支", "children": [{"topic": "二级分支"}]}]}
 最多三层，节点文字不超过 20 字。只输出 JSON，不要解释。"""
 
+RULE_SYSTEM = """你负责把学校的综测/保研加分细则整理成可计算的规则条目。
+严格输出 JSON：{"rules": [{"dimension": "德|智|体|美|劳", "name": "加分项名称", "score": 2.5}]}
+要求：
+- dimension 只能是 德、智、体、美、劳 之一
+- name 用细则里的原始表述，尽量简短
+- score 是该项对应分值；若是区间或分级，取常见档位并写进 name
+- 只输出 JSON，不要解释"""
+
 
 class LLMError(Exception):
     def __init__(self, message: str, status: int = 502) -> None:

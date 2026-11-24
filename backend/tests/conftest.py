@@ -2,7 +2,7 @@ from collections.abc import Iterator
 
 import pytest
 from fastapi.testclient import TestClient
-from sqlalchemy.pool import StaticPool
+from sqlalchemy.pool import NullPool
 from sqlmodel import Session, SQLModel, create_engine
 
 from app.config import settings
@@ -14,11 +14,16 @@ from app.main import create_app
 def client_fixture(tmp_path, monkeypatch) -> Iterator[TestClient]:
     # 每次测试用独立的数据库与上传目录，避免污染开发数据
     monkeypatch.setattr(settings, "data_dir", tmp_path, raising=False)
+    db_path = tmp_path / "learnloop.db"
+    monkeypatch.setattr(
+        settings, "database_url", f"sqlite:///{db_path.as_posix()}", raising=False
+    )
 
+    # 文件型数据库 + 不池化连接：备份替换文件后能立刻读到新库
     engine = create_engine(
-        "sqlite://",
+        f"sqlite:///{db_path.as_posix()}",
         connect_args={"check_same_thread": False},
-        poolclass=StaticPool,
+        poolclass=NullPool,
     )
     SQLModel.metadata.create_all(engine)
 
@@ -60,12 +65,22 @@ class FakeLLM:
                 {"topic": "导数"},
             ],
         }
+        self.rules_data = {
+            "rules": [
+                {"dimension": "智", "name": "国家级竞赛一等奖", "score": 5},
+                {"dimension": "德", "name": "志愿服务满 50 小时", "score": 2},
+                {"dimension": "未知", "name": "非法维度", "score": 3},
+                {"dimension": "体", "name": "", "score": 1},
+            ]
+        }
         self.calls: list[tuple[str, str]] = []
 
     async def chat_json(self, system: str, user: str, image_urls=None):
         self.calls.append(("json", user))
         if "思维导图" in system:
             return self.map_data
+        if "综测" in system:
+            return self.rules_data
         return self.analysis
 
     async def chat_text(self, system: str, user: str, image_urls=None):
@@ -88,3 +103,4 @@ def fake_llm_fixture(client: TestClient) -> FakeLLM:
     fake = FakeLLM()
     client.app.dependency_overrides[get_llm] = lambda: fake
     return fake
+

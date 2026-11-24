@@ -1,90 +1,94 @@
 # LearnLoop
 
-面向本科生的「学习管理 + 保研规划」本地优先工作台。
+面向本科生的「学习管理 + 保研规划」本地优先工作台：
+资料 → 批注 → 错题 → 导图 → 复习计划 → 今日任务，另一条线是成绩单/加分材料 → 识别 → 确认 → 算分。
 
 - 产品设计：[docs/product-design.md](docs/product-design.md)（Word 版：`docs/LearnLoop-产品设计文档.docx`）
 - 技术栈：React 19 + TypeScript + Vite / FastAPI + SQLModel + SQLite / DeepSeek API
+
+## 快速开始
+
+```bash
+# 1. 后端（首次需要建虚拟环境）
+cd backend
+python -m venv .venv
+.venv/Scripts/python.exe -m pip install -r requirements.txt
+.venv/Scripts/python.exe -m uvicorn app.main:app --reload --port 8000
+
+# 2. 前端（另开一个终端）
+cd frontend
+pnpm install
+pnpm dev
+```
+
+打开 http://127.0.0.1:5173 。
+
+**第一次使用**：进入「设置」页，把 DeepSeek 的 API Key 粘进去保存，再点「测试连接」。
+Key 只存本机数据库，不会打包进前端，也不会进 git。
+
+## 功能
+
+### 学习
+
+- **学科**：自定义学科与颜色，每个学科下挂资料 / 错题 / 导图 / 考试
+- **资料与批注**：上传 PDF、图片、Word、PPT；PDF 在线多色画笔、文字批注、橡皮擦、撤销重做；批注按页自动保存，原始文件永不修改
+- **错题**：文字或图片/PDF 录入（OCR 自动转文字）→ AI 分析错因、给正确解法、出 3 道同类变式题 → 标记已掌握 / 删除
+- **导图**：AI 综合资料、错题与考试生成可编辑思维导图，支持拖拽与保存
+- **复习计划**：录入考试后按剩余天数倒排成每日任务；今日任务自动汇总逾期项，勾选完成回写进度
+
+### 保研
+
+- **必修成绩**：录入课程（学分/成绩/必修或选修），自动算加权平均分与 4.0 制 GPA，只统计必修
+- **综测**：按德智体美劳记录加分项并汇总；可粘贴学院细则让 AI 拆成「维度 + 名称 + 分值」的规则，确认后入库
+- **综合成绩**：按学校权重合成（默认必修 70% + 综测 30%），可填目标分看差距
+
+### 其他
+
+- **全局搜索**：跨学科、资料、错题、导图检索
+- **音乐播放器**：全站悬浮，上传本地音乐、播放列表、单曲/列表/随机、音量
+- **备份**：设置页一键导出 zip（数据库 + 上传文件），可覆盖式导入恢复
 
 ## 目录结构
 
 ```
 backend/            FastAPI 服务
-  app/              配置、数据库、模型、路由
-  tests/            pytest 测试
-  data/             运行时 SQLite（不提交）
+  app/routers/      学科、资料、错题、考试、任务、导图、保研、搜索、备份
+  app/services/     LLM 客户端、计划排期、成绩计算
+  tests/            pytest（88 项）
+  data/             运行时 SQLite 与上传文件（不提交）
 frontend/           React 应用
   src/pages/        页面
-  src/components/   布局与通用组件
+  src/components/   布局、批注器、错题、导图、考试、播放器
   src/stores/       Zustand 状态
-  src/lib/          API 封装
+  e2e/              Playwright 冒烟测试
 docs/               产品文档
 scripts/            文档校验与转换脚本
 ```
 
-## 开发
-
-首次准备：
-
-```bash
-cd backend
-python -m venv .venv
-.venv/Scripts/python.exe -m pip install -r requirements.txt
-copy .env.example .env        # 填入 DEEPSEEK_API_KEY
-
-cd ../frontend
-pnpm install
-```
-
-启动（两个终端）：
-
-```bash
-# 终端 1
-cd backend
-.venv/Scripts/python.exe -m uvicorn app.main:app --reload --port 8000
-
-# 终端 2
-cd frontend
-pnpm dev
-```
-
-打开 http://127.0.0.1:5173 。前端通过 Vite 代理把 `/api` 转发到 8000。
-
 ## 测试
 
 ```bash
-cd backend  && .venv/Scripts/python.exe -m pytest
-cd frontend && pnpm test
-cd frontend && pnpm build          # 类型检查 + 打包
-node scripts/check-docs.mjs        # 文档结构校验
+cd backend  && .venv/Scripts/python.exe -m pytest     # 88 passed
+cd frontend && pnpm test                              # 33 passed
+cd frontend && pnpm build                             # 类型检查 + 打包
+node scripts/check-docs.mjs                           # 文档结构校验
 ```
 
-浏览器端到端测试（需要先启动前后端）：
+浏览器端到端（先启动前后端）：
 
 ```bash
 cd frontend
-node e2e/smoke.mjs     # 上传 PDF → 打开阅读器 → 画笔/文字/橡皮擦 → 校验落库并截图
+node e2e/smoke.mjs      # 资料批注：PDF 渲染、画笔、文字、橡皮擦、落库
+node e2e/mistakes.mjs   # 设置 Key、错题识别与分析、掌握状态
+node e2e/study.mjs      # 考试 → 复习计划 → 今日任务 → 导图保存
+node e2e/research.mjs   # 必修成绩、综测加分、细则解析、综合成绩
+node e2e/final.mjs      # 全局搜索、音乐播放器、备份导出
 ```
 
-## 进度
+`final.mjs` 使用本机 Edge（`channel: msedge`），因为 Playwright 自带 Chromium 不含音频编解码。
 
-| 里程碑 | 状态 |
-|---|---|
-| M1 学科管理 | 完成：学科增删改查、颜色标记 |
-| M1 资料与批注 | 完成：上传/下载/删除、PDF 阅读、画笔/文字/橡皮擦/撤销重做、批注按页持久化 |
-| M2 录入·识别·确认、错题 | 完成：设置页填 Key、图片/PDF 识别题目、AI 错因分析与变式题、错题状态管理 |
-| M3 导图、复习计划、今日任务 | 完成：AI 生成可编辑导图、考试倒排计划、今日任务与逾期顺延 |
-| M4 必修成绩、综测、综合成绩 | 进行中 |
-| M5 音乐播放器、搜索、备份 | 未开始 |
+## 说明
 
-## 已实现的批注能力
-
-- 画笔（4 种颜色）、文字批注（点击落点输入）、橡皮擦（按包围盒点擦）、选择
-- 撤销 / 重做（每页 50 步历史）
-- 翻页、缩放（50%–300%），批注按 PDF 逻辑坐标存储，缩放不漂移
-- 批注按「资料 + 页码」自动保存到本地数据库，切页/刷新后恢复
-- 原始 PDF 永不修改，擦除只作用于批注层
-
-## 注意
-
-- `DEEPSEEK_API_KEY` 只放在 `backend/.env`，不进前端、不进 git。
-- 数据默认存本机 `backend/data/learnloop.db`，备份即拷贝该文件。
+- 数据默认存本机 `backend/data/learnloop.db`，上传文件在 `backend/data/uploads/`
+- 删除学科会级联删除其资料、错题、导图、考试与任务
+- 批注是独立图层，擦除只作用于批注，PDF 原件不变

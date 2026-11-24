@@ -57,3 +57,25 @@ def test_delete_subject(client):
     assert client.delete(f"/api/subjects/{subject_id}").status_code == 204
     assert client.get("/api/subjects").json() == []
     assert client.delete(f"/api/subjects/{subject_id}").status_code == 404
+
+
+def test_delete_subject_cascades(client, subject, tmp_path):
+    subject_id = subject["id"]
+    client.post(
+        f"/api/subjects/{subject_id}/materials",
+        files={"file": ("真题.pdf", b"%PDF-1.4", "application/pdf")},
+    )
+    client.post(f"/api/subjects/{subject_id}/mistakes", json={"question": "求极限"})
+    client.post(f"/api/subjects/{subject_id}/maps", json={"title": "导图"})
+    exam = client.post(
+        f"/api/subjects/{subject_id}/exams",
+        json={"title": "期中", "exam_date": "2030-01-01", "scope": ""},
+    ).json()
+    client.post(f"/api/exams/{exam['id']}/plan")
+
+    assert client.delete(f"/api/subjects/{subject_id}").status_code == 204
+
+    assert client.get("/api/mistakes/1").status_code == 404
+    assert client.get("/api/materials/1").status_code == 404
+    assert client.get("/api/tasks", params={"day": "2030-01-01"}).json() == []
+    assert list((tmp_path / "uploads").glob("*")) == []

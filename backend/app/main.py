@@ -1,4 +1,4 @@
-from contextlib import asynccontextmanager
+﻿from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -6,12 +6,15 @@ from fastapi.middleware.cors import CORSMiddleware
 from .config import settings
 from .db import init_db
 from .routers import (
+    backup,
     ai,
     exams,
     health,
     maps,
     materials,
     mistakes,
+    research,
+    search,
     settings as settings_router,
     subjects,
     tasks,
@@ -41,7 +44,11 @@ def create_app(init_database: bool = True) -> FastAPI:
     app.include_router(exams.router)
     app.include_router(tasks.router)
     app.include_router(maps.router)
+    app.include_router(research.router)
+    app.include_router(search.router)
+    app.include_router(backup.router)
     return app
 
 
 app = create_app()
+

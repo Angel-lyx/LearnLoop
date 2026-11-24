@@ -1,8 +1,18 @@
 from fastapi import APIRouter, Depends, HTTPException, Response, status
 from sqlmodel import Session, select
 
+from ..config import settings
 from ..db import get_session
-from ..models import Subject, utcnow
+from ..models import (
+    Annotation,
+    Exam,
+    Material,
+    MindMap,
+    Mistake,
+    Subject,
+    Task,
+    utcnow,
+)
 from ..schemas import SubjectCreate, SubjectRead, SubjectUpdate
 
 router = APIRouter(prefix="/api/subjects", tags=["subjects"])
@@ -66,6 +76,39 @@ def delete_subject(subject_id: int, session: Session = Depends(get_session)) -> 
     subject = session.get(Subject, subject_id)
     if subject is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "学科不存在")
+
+    # 级联清理：资料（含文件与批注）、错题、导图、考试（含任务）
+    for material in session.exec(
+        select(Material).where(Material.subject_id == subject_id)
+    ).all():
+        (settings.uploads_dir / material.storage_name).unlink(missing_ok=True)
+        for annotation in session.exec(
+            select(Annotation).where(Annotation.material_id == material.id)
+        ).all():
+            session.delete(annotation)
+        session.delete(material)
+
+    for mistake in session.exec(
+        select(Mistake).where(Mistake.subject_id == subject_id)
+    ).all():
+        session.delete(mistake)
+
+    for mindmap in session.exec(
+        select(MindMap).where(MindMap.subject_id == subject_id)
+    ).all():
+        session.delete(mindmap)
+
+    for exam in session.exec(select(Exam).where(Exam.subject_id == subject_id)).all():
+        for task in session.exec(select(Task).where(Task.exam_id == exam.id)).all():
+            session.delete(task)
+        session.delete(exam)
+
+    # 手动任务也一并清掉
+    for task in session.exec(
+        select(Task).where(Task.subject_id == subject_id, Task.exam_id.is_(None))
+    ).all():
+        session.delete(task)
+
     session.delete(subject)
     session.commit()
     return Response(status_code=status.HTTP_204_NO_CONTENT)
