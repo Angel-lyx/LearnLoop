@@ -1,6 +1,10 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
-import { researchApi, type RuleDraft } from "../lib/api";
+import {
+  researchApi,
+  type CourseDraft,
+  type RuleDraft,
+} from "../lib/api";
 import type {
   BonusItem,
   Course,
@@ -130,6 +134,48 @@ function CoursesTab({
   const [credits, setCredits] = useState("3");
   const [score, setScore] = useState("");
   const [category, setCategory] = useState<"required" | "elective">("required");
+  const [drafts, setDrafts] = useState<CourseDraft[] | null>(null);
+  const [busy, setBusy] = useState(false);
+  const fileRef = useRef<HTMLInputElement>(null);
+
+  async function handleFile(event: React.ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    setBusy(true);
+    onError(null);
+    try {
+      setDrafts(await researchApi.parseCoursesFile(file));
+    } catch (err) {
+      onError(err instanceof Error ? err.message : "成绩单识别失败");
+    } finally {
+      setBusy(false);
+      if (fileRef.current) fileRef.current.value = "";
+    }
+  }
+
+  function updateDraft(index: number, patch: Partial<CourseDraft>) {
+    setDrafts((current) =>
+      current
+        ? current.map((item, i) => (i === index ? { ...item, ...patch } : item))
+        : current,
+    );
+  }
+
+  async function confirmDrafts() {
+    if (!drafts) return;
+    setBusy(true);
+    try {
+      for (const draft of drafts) {
+        await researchApi.addCourse({ ...draft, term: "" });
+      }
+      setDrafts(null);
+      await onChanged();
+    } catch (err) {
+      onError(err instanceof Error ? err.message : "导入失败");
+    } finally {
+      setBusy(false);
+    }
+  }
 
   async function handleAdd(event: React.FormEvent) {
     event.preventDefault();
@@ -217,6 +263,101 @@ function CoursesTab({
         </button>
       </form>
 
+      <section className="rounded-xl border border-paper-200 bg-white p-4">
+        <div className="flex flex-wrap items-center gap-2">
+          <input
+            ref={fileRef}
+            id="course-file"
+            type="file"
+            accept=".pdf,.png,.jpg,.jpeg,.webp"
+            className="hidden"
+            onChange={(event) => void handleFile(event)}
+          />
+          <label
+            htmlFor="course-file"
+            className="cursor-pointer rounded-lg border border-brand-500 px-3 py-1.5 text-xs font-medium text-brand-600 hover:bg-brand-50"
+          >
+            {busy && !drafts ? "识别中…" : "上传成绩单识别"}
+          </label>
+          <span className="text-xs text-ink-400">
+            支持成绩单截图、教务 PDF；识别结果可逐行修改后再导入
+          </span>
+        </div>
+
+        {drafts && (
+          <div className="mt-3 rounded-lg bg-paper-50 p-3">
+            <p className="text-xs text-ink-500">
+              识别到 {drafts.length} 门课程，确认无误后导入：
+            </p>
+            <ul className="mt-2 space-y-1.5">
+              {drafts.map((draft, index) => (
+                <li key={index} className="flex flex-wrap items-center gap-2">
+                  <input
+                    value={draft.name}
+                    onChange={(event) => updateDraft(index, { name: event.target.value })}
+                    className="min-w-[140px] flex-1 rounded border border-paper-200 px-2 py-1 text-sm"
+                  />
+                  <input
+                    type="number"
+                    step="0.5"
+                    value={draft.credits}
+                    onChange={(event) =>
+                      updateDraft(index, { credits: Number(event.target.value) })
+                    }
+                    className="w-16 rounded border border-paper-200 px-2 py-1 text-sm"
+                  />
+                  <input
+                    type="number"
+                    value={draft.score}
+                    onChange={(event) =>
+                      updateDraft(index, { score: Number(event.target.value) })
+                    }
+                    className="w-16 rounded border border-paper-200 px-2 py-1 text-sm"
+                  />
+                  <select
+                    value={draft.category}
+                    onChange={(event) =>
+                      updateDraft(index, {
+                        category: event.target.value as "required" | "elective",
+                      })
+                    }
+                    className="rounded border border-paper-200 px-2 py-1 text-sm"
+                  >
+                    <option value="required">必修</option>
+                    <option value="elective">选修</option>
+                  </select>
+                  <button
+                    onClick={() =>
+                      setDrafts((current) =>
+                        current ? current.filter((_, i) => i !== index) : current,
+                      )
+                    }
+                    className="text-xs text-ink-400 hover:text-red-500"
+                  >
+                    移除
+                  </button>
+                </li>
+              ))}
+            </ul>
+            <div className="mt-2 flex gap-2">
+              <button
+                onClick={() => void confirmDrafts()}
+                disabled={busy || drafts.length === 0}
+                className="rounded-lg bg-brand-500 px-3 py-1.5 text-xs font-medium text-white hover:bg-brand-600 disabled:opacity-50"
+              >
+                {busy ? "导入中…" : "确认导入"}
+              </button>
+              <button
+                onClick={() => setDrafts(null)}
+                className="text-xs text-ink-400 hover:text-ink-600"
+              >
+                取消
+              </button>
+            </div>
+          </div>
+        )}
+      </section>
+
       {courses.length === 0 ? (
         <div className="rounded-xl border border-dashed border-paper-200 bg-white px-6 py-12 text-center">
           <p className="text-sm text-ink-600">还没有课程</p>
@@ -276,6 +417,56 @@ function ZongceTab({
   const [ruleText, setRuleText] = useState("");
   const [parsing, setParsing] = useState(false);
   const [drafts, setDrafts] = useState<RuleDraft[] | null>(null);
+  const [bonusDrafts, setBonusDrafts] = useState<RuleDraft[] | null>(null);
+  const ruleFileRef = useRef<HTMLInputElement>(null);
+  const bonusFileRef = useRef<HTMLInputElement>(null);
+
+  async function handleRuleFile(event: React.ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    setParsing(true);
+    onError(null);
+    try {
+      setDrafts(await researchApi.parseRulesFile(file));
+    } catch (err) {
+      onError(err instanceof Error ? err.message : "细则识别失败");
+    } finally {
+      setParsing(false);
+      if (ruleFileRef.current) ruleFileRef.current.value = "";
+    }
+  }
+
+  async function handleBonusFile(event: React.ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    setParsing(true);
+    onError(null);
+    try {
+      setBonusDrafts(await researchApi.parseBonusFile(file));
+    } catch (err) {
+      onError(err instanceof Error ? err.message : "证书识别失败");
+    } finally {
+      setParsing(false);
+      if (bonusFileRef.current) bonusFileRef.current.value = "";
+    }
+  }
+
+  async function confirmBonusDrafts() {
+    if (!bonusDrafts) return;
+    try {
+      for (const draft of bonusDrafts) {
+        await researchApi.addBonus({
+          dimension: draft.dimension,
+          title: draft.name,
+          score: draft.score,
+        });
+      }
+      setBonusDrafts(null);
+      await onChanged();
+    } catch (err) {
+      onError(err instanceof Error ? err.message : "导入失败");
+    }
+  }
 
   async function handleAdd(event: React.FormEvent) {
     event.preventDefault();
@@ -379,7 +570,64 @@ function ZongceTab({
         >
           添加加分
         </button>
+        <input
+          ref={bonusFileRef}
+          id="bonus-file"
+          type="file"
+          accept=".pdf,.png,.jpg,.jpeg,.webp"
+          className="hidden"
+          onChange={(event) => void handleBonusFile(event)}
+        />
+        <label
+          htmlFor="bonus-file"
+          className="cursor-pointer rounded-lg border border-paper-200 px-3 py-2 text-xs text-ink-600 hover:bg-paper-50"
+        >
+          上传证书识别
+        </label>
       </form>
+
+      {bonusDrafts && (
+        <div className="rounded-xl border border-paper-200 bg-white p-4">
+          <p className="text-xs text-ink-500">
+            从材料里识别到 {bonusDrafts.length} 条加分项，确认后写入：
+          </p>
+          <ul className="mt-2 space-y-1">
+            {bonusDrafts.map((draft, index) => (
+              <li key={index} className="flex items-center gap-2 text-sm text-ink-800">
+                <span className="rounded bg-paper-100 px-1.5 py-0.5 text-[11px] text-ink-600">
+                  {draft.dimension}
+                </span>
+                <span className="flex-1 truncate">{draft.name}</span>
+                <span className="text-xs text-ink-500">+{draft.score}</span>
+                <button
+                  onClick={() =>
+                    setBonusDrafts((current) =>
+                      current ? current.filter((_, i) => i !== index) : current,
+                    )
+                  }
+                  className="text-xs text-ink-400 hover:text-red-500"
+                >
+                  移除
+                </button>
+              </li>
+            ))}
+          </ul>
+          <div className="mt-2 flex gap-2">
+            <button
+              onClick={() => void confirmBonusDrafts()}
+              className="rounded-lg bg-brand-500 px-3 py-1.5 text-xs font-medium text-white hover:bg-brand-600"
+            >
+              确认导入
+            </button>
+            <button
+              onClick={() => setBonusDrafts(null)}
+              className="text-xs text-ink-400 hover:text-ink-600"
+            >
+              取消
+            </button>
+          </div>
+        </div>
+      )}
 
       {bonus.length > 0 && (
         <ul className="divide-y divide-paper-200 overflow-hidden rounded-xl border border-paper-200 bg-white">
@@ -424,6 +672,20 @@ function ZongceTab({
           >
             {parsing ? "解析中…" : "AI 解析细则"}
           </button>
+          <input
+            ref={ruleFileRef}
+            id="rule-file"
+            type="file"
+            accept=".pdf,.png,.jpg,.jpeg,.webp"
+            className="hidden"
+            onChange={(event) => void handleRuleFile(event)}
+          />
+          <label
+            htmlFor="rule-file"
+            className="cursor-pointer rounded-lg border border-paper-200 px-3 py-1.5 text-xs text-ink-600 hover:bg-paper-50"
+          >
+            上传细则文件/截图
+          </label>
           <span className="text-xs text-ink-400">
             规则库当前 {rules.length} 条
           </span>

@@ -140,7 +140,14 @@ export const researchApi = {
   removeRule: (ruleId: number) => api.delete(`/research/rules/${ruleId}`),
   parseRules: (text: string) =>
     api.post<RuleDraft[]>("/research/rules/parse", { text }),
-  parseRulesFile: (file: File) => postFile<RuleDraft[]>("/research/rules/parse-file", file),
+  parseRulesFile: (file: File) =>
+    postFile<RuleDraft[]>("/research/rules/parse-file", file),
+  parseBonusFile: (file: File) =>
+    postFile<RuleDraft[]>("/research/bonus/parse-file", file),
+  parseCourses: (text: string) =>
+    api.post<CourseDraft[]>("/research/courses/parse", { text }),
+  parseCoursesFile: (file: File) =>
+    postFile<CourseDraft[]>("/research/courses/parse-file", file),
   bonus: () => api.get<BonusItem[]>("/research/bonus"),
   addBonus: (payload: { dimension: Dimension; title: string; score: number }) =>
     api.post<BonusItem>("/research/bonus", payload),
@@ -157,6 +164,13 @@ export interface RuleDraft {
   dimension: Dimension;
   name: string;
   score: number;
+}
+
+export interface CourseDraft {
+  name: string;
+  credits: number;
+  score: number;
+  category: "required" | "elective";
 }
 
 export interface SearchResult {

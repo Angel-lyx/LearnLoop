@@ -101,6 +101,59 @@ async function main() {
   ok(true, "目标分差计算正常");
   await page.screenshot({ path: path.join(OUT, "m4-composite.png") });
 
+  // 5. 成绩单识别（拦截大模型，验证「识别 → 修改 → 确认」链路）
+  await page.route("**/api/research/courses/parse-file", (route) =>
+    route.fulfill({
+      json: [
+        { name: "线性代数", credits: 3, score: 88, category: "required" },
+        { name: "大学物理", credits: 4, score: 80, category: "required" },
+      ],
+      status: 200,
+    }),
+  );
+  await page.getByRole("button", { name: "必修成绩", exact: true }).click();
+  await page.locator("#course-file").setInputFiles({
+    name: "成绩单.png",
+    mimeType: "image/png",
+    buffer: Buffer.from("fake-transcript"),
+  });
+  await page.waitForSelector("text=识别到 2 门课程");
+  ok(true, "成绩单识别结果进入待确认列表");
+
+  // 识别结果可修改：把第二门课成绩改掉
+  const scoreInputs = page.locator('section input[type="number"]');
+  await scoreInputs.nth(3).fill("81");
+  await page.getByRole("button", { name: "确认导入" }).click();
+  await page.waitForTimeout(800);
+
+  const courses = await (await fetch(`${BASE}/api/research/courses`)).json();
+  ok(courses.length === 3, "确认后课程已入库（1 门手填 + 2 门识别）");
+  ok(
+    courses.some((course) => course.name === "线性代数"),
+    "识别出的课程名称正确保存",
+  );
+
+  // 6. 证书识别
+  await page.route("**/api/research/bonus/parse-file", (route) =>
+    route.fulfill({
+      json: [{ dimension: "体", name: "校运会冠军", score: 3 }],
+      status: 200,
+    }),
+  );
+  await page.getByRole("button", { name: "综测", exact: true }).click();
+  await page.locator("#bonus-file").setInputFiles({
+    name: "证书.pdf",
+    mimeType: "application/pdf",
+    buffer: Buffer.from("%PDF-1.4"),
+  });
+  await page.waitForSelector("text=识别到 1 条加分项");
+  await page.getByRole("button", { name: "确认导入" }).last().click();
+  await page.waitForTimeout(800);
+
+  const bonusAfter = await (await fetch(`${BASE}/api/research/bonus`)).json();
+  ok(bonusAfter.length === 2, "证书识别的加分项已入库");
+  await page.screenshot({ path: path.join(OUT, "m4-recognize.png") });
+
   ok(errors.length === 0, `浏览器无 console 错误${errors.length ? "：" + errors.join(" | ") : ""}`);
 
   await browser.close();
