@@ -45,28 +45,36 @@ COURSE_SYSTEM = """你负责把成绩单整理成结构化课程列表。
 - 跳过总学分、平均分这类汇总行
 - 只输出 JSON，不要解释"""
 
-PLAN_SYSTEM = """你是备考规划师。根据考试信息、学生已有的学习数据以及检索到的资料，制定一份可执行的每日复习计划。
+PLAN_SYSTEM = """你是备考规划师，任务是把「考试范围 + 学生已有的资料和错题 + 网上检索到的资料」压成一份省力但覆盖全面的复习计划。
 
 严格输出 JSON：
 {
-  "summary": "整体复习策略，2-3 句",
+  "summary": "整体取舍与节奏，2-4 句",
+  "coverage": [
+    {"topic": "考试范围里的专题", "date": "YYYY-MM-DD", "weight": "高频|中频|低频"}
+  ],
   "days": [
     {
       "date": "YYYY-MM-DD",
       "focus": "当天主题，10 字以内",
-      "tasks": [
-        {"title": "具体任务，动词开头", "detail": "怎么做、做到什么程度，40 字以内", "minutes": 60}
-      ],
+      "goal": "当天结束时能做到什么，20 字以内",
+      "notes": ["考点速览：直接给结论、公式或判别法，30-60 字"],
+      "pitfalls": ["易错点，30 字以内"],
+      "quiz": [{"question": "一道小题", "answer": "答案与关键步骤，80 字以内"}],
+      "tasks": [{"title": "动词开头，15 字以内", "detail": "怎么做、做到什么程度，40 字以内", "minutes": 40}],
       "resources": [{"title": "资料名", "url": "链接"}]
     }
   ]
 }
 
 要求：
-- 从今天排到考前一天，每天 2-4 个任务，单任务 20-120 分钟
-- 前期打基础、中期专项突破、最后 2-3 天做模拟和错题回顾
-- 优先利用学生已有的资料与错题，检索到的资料作为补充
-- resources 只从给出的检索结果里挑，没有就留空数组
+- coverage 必须覆盖考试范围的每一个专题，一个都不能漏；按历年考频标「高频 / 中频 / 低频」，一个专题只出现一次
+- 每天 2-3 个任务，当天总时长不超过学生给出的每日预算；单任务 15-90 分钟
+- 任务优先用学生已有的资料与错题（写清用哪一份），网上资料只作为补充
+- 只有用户消息里点名「精讲日」的日期才填 notes / pitfalls / quiz；其余日期这三项必须是空数组
+- 精讲日给 3 条 notes、1 条 pitfalls、1 道 quiz；要短、可背、可直接照做，不要让学生自己再总结
+- 前期补基础、中期专项突破、最后 2 天真题模拟与错题回顾，不再开新专题
+- resources 只能从给出的检索结果里挑，没有就留空数组
 - 只输出 JSON，不要解释"""
 
 
@@ -118,6 +126,8 @@ class LLMClient:
         system: str,
         user: str,
         image_urls: list[str] | None = None,
+        max_tokens: int = 4096,
+        timeout: float = 120,
     ) -> dict[str, Any]:
         content: list[dict[str, Any]] = [{"type": "text", "text": user}]
         for url in image_urls or []:
@@ -131,8 +141,9 @@ class LLMClient:
             ],
             "response_format": {"type": "json_object"},
             "temperature": 0.3,
+            "max_tokens": max_tokens,
         }
-        data = await self._request("/chat/completions", json_body=payload)
+        data = await self._request("/chat/completions", json_body=payload, timeout=timeout)
         try:
             raw = data["choices"][0]["message"]["content"]
             return json.loads(raw)

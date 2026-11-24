@@ -1,9 +1,19 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { examsApi } from "../../lib/api";
-import type { AIPlan } from "../../types";
+import type { AIPlan, Exam } from "../../types";
 import { useExamStore } from "../../stores/studyStore";
 import { useTaskStore } from "../../stores/taskStore";
+import PlanView from "./PlanView";
+
+function planErrorMessage(error: unknown): string {
+  const message = error instanceof Error ? error.message : "生成失败";
+  // 旧后端没有 /plan/ai 路由时只会回一个 "Not Found"，这里翻译成可操作的提示
+  if (message === "Not Found") {
+    return "后端服务还是旧版本，重启后端（uvicorn）后再试一次";
+  }
+  return message;
+}
 
 export default function ExamPanel({ subjectId }: { subjectId: number }) {
   const { items, loading, error, load, create, remove, generatePlan, dismissError } =
@@ -14,13 +24,40 @@ export default function ExamPanel({ subjectId }: { subjectId: number }) {
   const [examDate, setExamDate] = useState("");
   const [scope, setScope] = useState("");
   const [notice, setNotice] = useState<string | null>(null);
+  const [noticeFailed, setNoticeFailed] = useState(false);
   const [busy, setBusy] = useState(false);
   const [aiBusy, setAiBusy] = useState<number | null>(null);
+  const [minutes, setMinutes] = useState(60);
   const [aiPlan, setAiPlan] = useState<AIPlan | null>(null);
+  const [aiExam, setAiExam] = useState<{ id: number; title: string } | null>(null);
+  const autoLoaded = useRef<number | null>(null);
 
   useEffect(() => {
     void load(subjectId);
+    setAiPlan(null);
+    setAiExam(null);
+    autoLoaded.current = null;
   }, [subjectId, load]);
+
+  // 再次进入页面时，直接展示已经生成过的计划，不用重新花 token
+  useEffect(() => {
+    if (!items.length || autoLoaded.current === subjectId) return;
+    const next = items.find((exam) => exam.days_left >= 0);
+    if (!next) return;
+    autoLoaded.current = subjectId;
+    let cancelled = false;
+    examsApi
+      .savedAiPlan(next.id)
+      .then((saved) => {
+        if (cancelled || saved.days.length === 0) return;
+        setAiPlan(saved);
+        setAiExam({ id: next.id, title: next.title });
+      })
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, [items, subjectId]);
 
   async function handleSubmit(event: React.FormEvent) {
     event.preventDefault();
@@ -44,22 +81,27 @@ export default function ExamPanel({ subjectId }: { subjectId: number }) {
     const count = await generatePlan(examId);
     setBusy(false);
     if (count > 0) {
+      setNoticeFailed(false);
       setNotice(`已生成 ${count} 条复习任务，去「复习计划」查看每日安排`);
       await reloadTasks();
     }
   }
 
-  async function handleAiPlan(examId: number) {
-    setAiBusy(examId);
+  async function handleAiPlan(exam: Exam | { id: number; title: string }) {
+    setAiBusy(exam.id);
     setNotice(null);
-    setAiPlan(null);
     try {
-      const result = await examsApi.aiPlan(examId);
+      const result = await examsApi.aiPlan(exam.id, minutes);
       setAiPlan(result);
-      setNotice(`联网检索完成，已按 ${result.days.length} 天排好计划`);
+      setAiExam({ id: exam.id, title: exam.title });
+      setNoticeFailed(false);
+      setNotice(
+        `${result.source_note}，已按 ${result.days.length} 天排好；前 10 天有考点速览与自测`,
+      );
       await reloadTasks();
     } catch (err) {
-      setNotice(err instanceof Error ? err.message : "生成失败");
+      setNoticeFailed(true);
+      setNotice(planErrorMessage(err));
     } finally {
       setAiBusy(null);
     }
@@ -67,22 +109,41 @@ export default function ExamPanel({ subjectId }: { subjectId: number }) {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <p className="text-sm text-ink-500">
-          录入考试后，系统会汇总该学科的资料、错题与导图，倒排成每日计划
+          录入考试后，系统会汇总该学科的资料、错题与导图，联网补充参考资料，
+          倒排成每日计划，并给出考点速览与自测题
         </p>
-        <button
-          onClick={() => setShowForm((value) => !value)}
-          className="btn btn-primary"
-        >
-          {showForm ? "收起" : "录入考试"}
-        </button>
+        <div className="flex items-center gap-2">
+          <label className="flex items-center gap-1.5 text-xs text-ink-400">
+            每天
+            <select
+              value={minutes}
+              onChange={(event) => setMinutes(Number(event.target.value))}
+              className="rounded-lg border border-paper-200 bg-white/80 px-2 py-1.5 text-xs text-ink-700 outline-none focus:border-brand-500"
+            >
+              {[30, 60, 90, 120].map((value) => (
+                <option key={value} value={value}>
+                  {value} 分钟
+                </option>
+              ))}
+            </select>
+          </label>
+          <button
+            onClick={() => setShowForm((value) => !value)}
+            className="btn btn-primary"
+          >
+            {showForm ? "收起" : "录入考试"}
+          </button>
+        </div>
       </div>
 
       {(error || notice) && (
         <div
           className={`flex items-center justify-between rounded-lg px-4 py-2.5 text-sm ${
-            error ? "bg-red-50 text-red-600" : "bg-emerald-50 text-emerald-700"
+            error || noticeFailed
+              ? "bg-red-50 text-red-600"
+              : "bg-emerald-50 text-emerald-700"
           }`}
         >
           <span>{error ?? notice}</span>
@@ -90,6 +151,7 @@ export default function ExamPanel({ subjectId }: { subjectId: number }) {
             onClick={() => {
               dismissError();
               setNotice(null);
+              setNoticeFailed(false);
             }}
             className="text-xs underline"
           >
@@ -99,10 +161,7 @@ export default function ExamPanel({ subjectId }: { subjectId: number }) {
       )}
 
       {showForm && (
-        <form
-          onSubmit={handleSubmit}
-          className="card space-y-2 p-4"
-        >
+        <form onSubmit={handleSubmit} className="card space-y-2 p-4">
           <input
             value={title}
             onChange={(event) => setTitle(event.target.value)}
@@ -119,7 +178,7 @@ export default function ExamPanel({ subjectId }: { subjectId: number }) {
             <input
               value={scope}
               onChange={(event) => setScope(event.target.value)}
-              placeholder="考试范围（可选）"
+              placeholder="考试范围（可选），例如：极限到定积分"
               className="flex-1 rounded-lg border border-paper-200 px-3 py-2 text-sm outline-none focus:border-brand-500"
             />
           </div>
@@ -169,7 +228,7 @@ export default function ExamPanel({ subjectId }: { subjectId: number }) {
               </div>
               <div className="flex items-center gap-2 text-xs">
                 <button
-                  onClick={() => void handleAiPlan(exam.id)}
+                  onClick={() => void handleAiPlan(exam)}
                   disabled={aiBusy !== null || exam.days_left < 0}
                   className="btn btn-primary !px-2.5 !py-1 text-xs"
                 >
@@ -194,58 +253,18 @@ export default function ExamPanel({ subjectId }: { subjectId: number }) {
         </ul>
       )}
 
-      {aiPlan && (
-        <section className="card p-5">
-          <div className="flex items-center justify-between">
-            <h3 className="section-title">AI 定制计划</h3>
-            <button
-              onClick={() => setAiPlan(null)}
-              className="text-xs text-ink-400 hover:text-ink-700"
-            >
-              收起
-            </button>
-          </div>
-          <p className="mt-2 text-sm text-ink-700">{aiPlan.summary}</p>
-
-          <ol className="mt-4 space-y-3">
-            {aiPlan.days.map((day) => (
-              <li key={day.date} className="rounded-xl border border-paper-200 bg-white/70 p-3">
-                <div className="flex items-center gap-2 text-sm">
-                  <span className="rounded-md bg-brand-50 px-2 py-0.5 text-xs text-brand-600">
-                    {day.date}
-                  </span>
-                  {day.focus && <span className="font-medium text-ink-800">{day.focus}</span>}
-                </div>
-                <ul className="mt-2 space-y-1.5">
-                  {day.tasks.map((task, index) => (
-                    <li key={index} className="text-sm text-ink-700">
-                      <span className="text-ink-900">· {task.title}</span>
-                      <span className="ml-2 text-xs text-ink-400">{task.minutes} 分钟</span>
-                      {task.detail && (
-                        <p className="ml-3 text-xs text-ink-500">{task.detail}</p>
-                      )}
-                    </li>
-                  ))}
-                </ul>
-                {day.resources.length > 0 && (
-                  <div className="mt-2 flex flex-wrap gap-2">
-                    {day.resources.map((res) => (
-                      <a
-                        key={res.url}
-                        href={res.url}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="chip hover:border-brand-400 hover:text-brand-600"
-                      >
-                        🔗 {res.title || res.url}
-                      </a>
-                    ))}
-                  </div>
-                )}
-              </li>
-            ))}
-          </ol>
-        </section>
+      {aiPlan && aiExam && (
+        <PlanView
+          key={`${aiExam.id}-${aiPlan.days[0]?.date ?? ""}-${aiPlan.summary.slice(0, 12)}`}
+          plan={aiPlan}
+          examTitle={aiExam.title}
+          regenerating={aiBusy !== null}
+          onRegenerate={() => void handleAiPlan(aiExam)}
+          onClose={() => {
+            setAiPlan(null);
+            setAiExam(null);
+          }}
+        />
       )}
     </div>
   );

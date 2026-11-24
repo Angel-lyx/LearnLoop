@@ -93,6 +93,22 @@ class Task(SQLModel, table=True):
     created_at: datetime = Field(default_factory=utcnow)
 
 
+class StudyPlan(SQLModel, table=True):
+    """AI 生成的复习计划快照：每日考点速览、易错点、自测题与资料链接。
+
+    任务本身落在 Task 表，这里保存「讲什么、怎么讲」，重新打开页面不用再花一次 token。
+    """
+
+    id: int | None = Field(default=None, primary_key=True)
+    exam_id: int = Field(index=True, foreign_key="exam.id")
+    summary: str = Field(default="", max_length=1200)
+    source_note: str = Field(default="", max_length=300)
+    coverage: str = Field(default="[]")  # JSON: [{topic, date, weight}]
+    days: str = Field(default="[]")  # JSON: PlanDay 列表
+    created_at: datetime = Field(default_factory=utcnow)
+    updated_at: datetime = Field(default_factory=utcnow)
+
+
 class MindMap(SQLModel, table=True):
     """思维导图。data 存 mind-elixir 的节点树 JSON。"""
 

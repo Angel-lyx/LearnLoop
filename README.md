@@ -34,7 +34,7 @@ Key 只存本机数据库，不会打包进前端，也不会进 git。
 - **资料与批注**：上传 PDF、图片、Word、PPT；PDF 在线多色画笔、文字批注、橡皮擦、撤销重做；批注按页自动保存，原始文件永不修改
 - **错题**：文字或图片/PDF 录入（OCR 自动转文字）→ AI 分析错因、给正确解法、出 3 道同类变式题 → 标记已掌握 / 删除
 - **导图**：AI 综合资料、错题与考试生成可编辑思维导图，支持拖拽与保存
-- **复习计划**：录入考试后按剩余天数倒排成每日任务；今日任务自动汇总逾期项，勾选完成回写进度
+- **复习计划**：录入考试后，AI 先联网补充高频考点与真题资料，再结合你的资料、错题与考试范围倒排每日任务；给出专题覆盖表（高/中/低频），最近 10 天附可直接背的考点速览、易错点与自测题；计划落库可回看；今日任务自动汇总逾期项，勾选完成回写进度
 
 ### 保研
 
@@ -54,7 +54,7 @@ Key 只存本机数据库，不会打包进前端，也不会进 git。
 backend/            FastAPI 服务
   app/routers/      学科、资料、错题、考试、任务、导图、保研、搜索、备份
   app/services/     LLM 客户端、计划排期、成绩计算
-  tests/            pytest（88 项）
+  tests/            pytest（101 项）
   data/             运行时 SQLite 与上传文件（不提交）
 frontend/           React 应用
   src/pages/        页面
@@ -68,8 +68,8 @@ scripts/            文档校验与转换脚本
 ## 测试
 
 ```bash
-cd backend  && .venv/Scripts/python.exe -m pytest     # 88 passed
-cd frontend && pnpm test                              # 33 passed
+cd backend  && .venv/Scripts/python.exe -m pytest     # 101 passed
+cd frontend && pnpm test                              # 38 passed
 cd frontend && pnpm build                             # 类型检查 + 打包
 node scripts/check-docs.mjs                           # 文档结构校验
 ```

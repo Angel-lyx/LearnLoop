@@ -85,15 +85,36 @@ export interface Task {
   resources?: { title: string; url: string }[];
 }
 
+export interface PlanQuiz {
+  question: string;
+  answer: string;
+}
+
+export interface PlanCoverage {
+  topic: string;
+  date: string | null;
+  /** 高频 / 中频 / 低频，模型没给时为空串 */
+  weight: string;
+}
+
 export interface AIPlanDay {
   date: string;
   focus: string;
+  goal: string;
+  /** 考点速览：直接可背的结论、公式、判别法 */
+  notes: string[];
+  pitfalls: string[];
+  quiz: PlanQuiz[];
   tasks: { title: string; detail: string; minutes: number }[];
   resources: { title: string; url: string }[];
 }
 
 export interface AIPlan {
   summary: string;
+  /** 资料来源说明，例如「已参考 6 条网络资料」 */
+  source_note: string;
+  /** 考试范围 → 日期 → 考频 的覆盖表 */
+  coverage: PlanCoverage[];
   days: AIPlanDay[];
   tasks: Task[];
 }

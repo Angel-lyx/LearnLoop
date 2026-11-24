@@ -83,6 +83,7 @@ class FakeLLM:
             ]
         }
         self.calls: list[tuple[str, str]] = []
+        self.fail_search = False
 
         from datetime import date, timedelta
 
@@ -101,10 +102,20 @@ class FakeLLM:
         ]
         self.plan_data = {
             "summary": "先补基础再做真题，最后两天模拟",
+            "coverage": [
+                {"topic": "极限", "date": tomorrow, "weight": "高频"},
+                {"topic": "导数", "date": tomorrow, "weight": "重点"},
+            ],
             "days": [
                 {
                     "date": tomorrow,
                     "focus": "极限",
+                    "goal": "能独立求 5 类极限",
+                    "notes": ["等价无穷小：sin x ~ x，tan x ~ x", "洛必达前先确认 0/0 或 ∞/∞"],
+                    "pitfalls": ["加减法里不能直接替换等价无穷小"],
+                    "quiz": [
+                        {"question": "求 lim(x→0) sin x / x", "answer": "1，用等价无穷小"}
+                    ],
                     "tasks": [
                         {"title": "复习极限定义", "detail": "整理 5 个典型例题", "minutes": 60}
                     ],
@@ -116,7 +127,9 @@ class FakeLLM:
             ],
         }
 
-    async def chat_json(self, system: str, user: str, image_urls=None):
+    async def chat_json(
+        self, system: str, user: str, image_urls=None, max_tokens=4096, timeout=120
+    ):
         self.calls.append(("json", user))
         if "思维导图" in system:
             return self.map_data
@@ -130,6 +143,10 @@ class FakeLLM:
 
     async def search(self, query: str, count: int = 5):
         self.calls.append(("search", query))
+        if self.fail_search:
+            from app.services.llm import LLMError
+
+            raise LLMError("大模型返回 404：Not Found", 502)
         return self.search_results[:count]
 
     async def chat_text(self, system: str, user: str, image_urls=None):

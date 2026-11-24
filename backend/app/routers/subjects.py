@@ -9,6 +9,7 @@ from ..models import (
     Material,
     MindMap,
     Mistake,
+    StudyPlan,
     Subject,
     Task,
     utcnow,
@@ -101,6 +102,10 @@ def delete_subject(subject_id: int, session: Session = Depends(get_session)) -> 
     for exam in session.exec(select(Exam).where(Exam.subject_id == subject_id)).all():
         for task in session.exec(select(Task).where(Task.exam_id == exam.id)).all():
             session.delete(task)
+        for plan in session.exec(
+            select(StudyPlan).where(StudyPlan.exam_id == exam.id)
+        ).all():
+            session.delete(plan)
         session.delete(exam)
 
     # 手动任务也一并清掉

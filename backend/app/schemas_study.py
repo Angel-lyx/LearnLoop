@@ -43,6 +43,17 @@ class PlanTaskItem(BaseModel):
     minutes: int = 45
 
 
+class PlanQuizItem(BaseModel):
+    question: str = ""
+    answer: str = ""
+
+
+class PlanCoverage(BaseModel):
+    topic: str
+    date: date_type | None = None
+    weight: str = ""
+
+
 class TaskRead(BaseModel):
     id: int
     subject_id: int | None
@@ -58,12 +69,22 @@ class TaskRead(BaseModel):
 class PlanDay(BaseModel):
     date: date_type
     focus: str = ""
+    goal: str = ""
+    notes: list[str] = Field(default_factory=list)
+    pitfalls: list[str] = Field(default_factory=list)
+    quiz: list[PlanQuizItem] = Field(default_factory=list)
     tasks: list[PlanTaskItem] = Field(default_factory=list)
     resources: list[PlanResource] = Field(default_factory=list)
 
 
+class AIPlanRequest(BaseModel):
+    daily_minutes: int = Field(default=60, ge=20, le=480)
+
+
 class AIPlanResult(BaseModel):
     summary: str = ""
+    source_note: str = ""
+    coverage: list[PlanCoverage] = Field(default_factory=list)
     days: list[PlanDay] = Field(default_factory=list)
     tasks: list[TaskRead] = Field(default_factory=list)
 
