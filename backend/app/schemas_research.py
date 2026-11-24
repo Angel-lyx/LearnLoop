@@ -46,6 +46,17 @@ class RuleParseRequest(BaseModel):
     text: str = Field(min_length=1, max_length=20000)
 
 
+class CourseDraft(BaseModel):
+    name: str
+    credits: float = 3
+    score: float = 0
+    category: Literal["required", "elective"] = "required"
+
+
+class CourseParseRequest(BaseModel):
+    text: str = Field(min_length=1, max_length=20000)
+
+
 class BonusCreate(BaseModel):
     dimension: Dimension
     title: str = Field(min_length=1, max_length=200)

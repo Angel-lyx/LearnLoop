@@ -37,6 +37,14 @@ RULE_SYSTEM = """你负责把学校的综测/保研加分细则整理成可计�
 - score 是该项对应分值；若是区间或分级，取常见档位并写进 name
 - 只输出 JSON，不要解释"""
 
+COURSE_SYSTEM = """你负责把成绩单整理成结构化课程列表。
+严格输出 JSON：{"courses": [{"name": "高等数学", "credits": 4, "score": 90, "category": "required"}]}
+要求：
+- category 只能是 required（必修）或 elective（选修），无法判断时用 required
+- credits 是学分数字，score 是百分制成绩数字
+- 跳过总学分、平均分这类汇总行
+- 只输出 JSON，不要解释"""
+
 
 class LLMError(Exception):
     def __init__(self, message: str, status: int = 502) -> None:

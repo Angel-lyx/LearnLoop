@@ -1,3 +1,4 @@
+import base64
 import json
 from pathlib import Path
 
@@ -11,6 +12,8 @@ from ..schemas_research import (
     BonusRead,
     CompositeStats,
     CourseCreate,
+    CourseDraft,
+    CourseParseRequest,
     CourseRead,
     CourseStats,
     OverviewRead,
@@ -23,7 +26,7 @@ from ..schemas_research import (
     ZongceStats,
 )
 from ..services.deps import get_llm
-from ..services.llm import RULE_SYSTEM, LLMClient, LLMError
+from ..services.llm import COURSE_SYSTEM, RULE_SYSTEM, LLMClient, LLMError
 from ..services.scores import (
     DIMENSIONS,
     CourseRow,
@@ -145,38 +148,128 @@ async def parse_rules(
     return drafts
 
 
+async def _extract_text(llm: LLMClient, filename: str, content: bytes) -> str:
+    """把上传的 PDF / 图片转成文字，供后续结构化使用。"""
+    suffix = Path(filename).suffix.lower()
+    if suffix == ".pdf":
+        return await llm.ocr(filename, content)
+    if suffix in {".png", ".jpg", ".jpeg", ".webp"}:
+        mime = "image/png" if suffix == ".png" else f"image/{suffix.lstrip('.')}"
+        encoded = base64.b64encode(content).decode("ascii")
+        return await llm.chat_text(
+            "你负责转写图片中的文字，只输出文字内容。",
+            "请转写这张图片里的文字。",
+            [f"data:{mime};base64,{encoded}"],
+        )
+    raise HTTPException(status.HTTP_400_BAD_REQUEST, f"暂不支持 {suffix}")
+
+
+async def _read_upload(file: UploadFile) -> tuple[str, bytes]:
+    content = await file.read()
+    if not content:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "文件为空")
+    return file.filename or "upload", content
+
+
 @router.post("/rules/parse-file", response_model=list[RuleDraft])
 async def parse_rules_file(
     file: UploadFile = File(...),
     llm: LLMClient = Depends(get_llm),
 ) -> list[RuleDraft]:
-    content = await file.read()
-    if not content:
-        raise HTTPException(status.HTTP_400_BAD_REQUEST, "文件为空")
-    filename = file.filename or "rules"
-    suffix = Path(filename).suffix.lower()
+    filename, content = await _read_upload(file)
     try:
-        if suffix == ".pdf":
-            text = await llm.ocr(filename, content)
-        elif suffix in {".png", ".jpg", ".jpeg", ".webp"}:
-            import base64
-
-            mime = "image/png" if suffix == ".png" else f"image/{suffix.lstrip('.')}"
-            encoded = base64.b64encode(content).decode("ascii")
-            text = await llm.chat_text(
-                "你负责转写图片中的文字，只输出文字内容。",
-                "请转写这张图片里的综测细则。",
-                [f"data:{mime};base64,{encoded}"],
-            )
-        else:
-            raise HTTPException(status.HTTP_400_BAD_REQUEST, f"暂不支持 {suffix}")
-        raw = await llm.chat_json(RULE_SYSTEM, f"请把下面的综测细则整理成规则条目：\n{text}")
+        text = await _extract_text(llm, filename, content)
+        raw = await llm.chat_json(
+            RULE_SYSTEM, f"请把下面的综测细则整理成规则条目：\n{text}"
+        )
     except LLMError as exc:
         raise HTTPException(exc.status, exc.message) from exc
 
     drafts = _normalize_rules(raw)
     if not drafts:
         raise HTTPException(status.HTTP_502_BAD_GATEWAY, "没有解析出可用规则")
+    return drafts
+
+
+def _normalize_courses(raw: dict) -> list[CourseDraft]:
+    drafts: list[CourseDraft] = []
+    for item in raw.get("courses") or []:
+        if not isinstance(item, dict):
+            continue
+        name = str(item.get("name", "")).strip()
+        if not name:
+            continue
+        try:
+            credits = float(item.get("credits", 0))
+            score = float(item.get("score", 0))
+        except (TypeError, ValueError):
+            continue
+        if credits <= 0 or not 0 <= score <= 100:
+            continue
+        category = (
+            "elective"
+            if str(item.get("category", "")).lower().startswith("elect")
+            else "required"
+        )
+        drafts.append(
+            CourseDraft(
+                name=name[:120],
+                credits=min(credits, 30),
+                score=score,
+                category=category,
+            )
+        )
+    return drafts
+
+
+@router.post("/courses/parse", response_model=list[CourseDraft])
+async def parse_courses(
+    payload: CourseParseRequest, llm: LLMClient = Depends(get_llm)
+) -> list[CourseDraft]:
+    try:
+        raw = await llm.chat_json(COURSE_SYSTEM, f"请整理下面的成绩单：\n{payload.text}")
+    except LLMError as exc:
+        raise HTTPException(exc.status, exc.message) from exc
+    drafts = _normalize_courses(raw)
+    if not drafts:
+        raise HTTPException(status.HTTP_502_BAD_GATEWAY, "没有识别出课程")
+    return drafts
+
+
+@router.post("/courses/parse-file", response_model=list[CourseDraft])
+async def parse_courses_file(
+    file: UploadFile = File(...),
+    llm: LLMClient = Depends(get_llm),
+) -> list[CourseDraft]:
+    filename, content = await _read_upload(file)
+    try:
+        text = await _extract_text(llm, filename, content)
+        raw = await llm.chat_json(COURSE_SYSTEM, f"请整理下面的成绩单：\n{text}")
+    except LLMError as exc:
+        raise HTTPException(exc.status, exc.message) from exc
+    drafts = _normalize_courses(raw)
+    if not drafts:
+        raise HTTPException(status.HTTP_502_BAD_GATEWAY, "没有识别出课程")
+    return drafts
+
+
+@router.post("/bonus/parse-file", response_model=list[RuleDraft])
+async def parse_bonus_file(
+    file: UploadFile = File(...),
+    llm: LLMClient = Depends(get_llm),
+) -> list[RuleDraft]:
+    """从证书/奖状图片里提取可加分的条目。"""
+    filename, content = await _read_upload(file)
+    try:
+        text = await _extract_text(llm, filename, content)
+        raw = await llm.chat_json(
+            RULE_SYSTEM, f"下面是获奖证书或加分材料的文字，请提取可加分的条目：\n{text}"
+        )
+    except LLMError as exc:
+        raise HTTPException(exc.status, exc.message) from exc
+    drafts = _normalize_rules(raw)
+    if not drafts:
+        raise HTTPException(status.HTTP_502_BAD_GATEWAY, "没有识别出可加分的条目")
     return drafts
 
 

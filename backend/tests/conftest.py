@@ -73,13 +73,24 @@ class FakeLLM:
                 {"dimension": "体", "name": "", "score": 1},
             ]
         }
+        self.courses_data = {
+            "courses": [
+                {"name": "高等数学", "credits": 4, "score": 92, "category": "required"},
+                {"name": "大学物理", "credits": 3, "score": 85, "category": "required"},
+                {"name": "艺术鉴赏", "credits": 2, "score": 90, "category": "elective"},
+                {"name": "", "credits": 3, "score": 80},
+                {"name": "越界课", "credits": 3, "score": 120},
+            ]
+        }
         self.calls: list[tuple[str, str]] = []
 
     async def chat_json(self, system: str, user: str, image_urls=None):
         self.calls.append(("json", user))
         if "思维导图" in system:
             return self.map_data
-        if "综测" in system:
+        if "成绩单" in system:
+            return self.courses_data
+        if "综测" in system or "加分" in system:
             return self.rules_data
         return self.analysis
 

@@ -104,3 +104,46 @@ def test_parse_rules_filters_invalid(client, fake_llm):
 def test_parse_rules_requires_key(client, subject):
     response = client.post("/api/research/rules/parse", json={"text": "任意细则"})
     assert response.status_code == 428
+
+
+def test_parse_courses_from_text(client, fake_llm):
+    response = client.post(
+        "/api/research/courses/parse",
+        json={"text": "高等数学 4 学分 92 分；大学物理 3 学分 85 分"},
+    )
+    assert response.status_code == 200
+    drafts = response.json()
+    # 空名称与越界成绩会被过滤
+    assert len(drafts) == 3
+    assert drafts[0] == {
+        "name": "高等数学",
+        "credits": 4,
+        "score": 92,
+        "category": "required",
+    }
+    assert drafts[2]["category"] == "elective"
+
+
+def test_parse_courses_from_file(client, fake_llm):
+    response = client.post(
+        "/api/research/courses/parse-file",
+        files={"file": ("成绩单.png", b"fake-png", "image/png")},
+    )
+    assert response.status_code == 200
+    assert len(response.json()) == 3
+
+
+def test_parse_courses_requires_key(client):
+    response = client.post("/api/research/courses/parse", json={"text": "成绩单"})
+    assert response.status_code == 428
+
+
+def test_parse_bonus_from_file(client, fake_llm):
+    response = client.post(
+        "/api/research/bonus/parse-file",
+        files={"file": ("证书.pdf", b"%PDF-1.4", "application/pdf")},
+    )
+    assert response.status_code == 200
+    drafts = response.json()
+    assert len(drafts) == 2
+    assert drafts[0]["dimension"] == "智"
