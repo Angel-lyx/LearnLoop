@@ -61,7 +61,14 @@ export default function PdfAnnotator({
     let cancelled = false;
     setDoc(null);
     setError(null);
-    const task = pdfjsLib.getDocument({ url: fileUrl });
+    // JBIG2 / JPEG2000 扫描件需要 wasm 解码器，中文 CID 字体需要 cMaps
+    const assetBase = import.meta.env.BASE_URL;
+    const task = pdfjsLib.getDocument({
+      url: fileUrl,
+      wasmUrl: `${assetBase}pdfjs-wasm/`,
+      cMapUrl: `${assetBase}pdfjs-cmaps/`,
+      cMapPacked: true,
+    });
     task.promise
       .then((loaded) => {
         if (cancelled) return;
@@ -215,8 +222,18 @@ export default function PdfAnnotator({
       renderTaskRef.current = task;
       try {
         await task.promise;
-      } catch {
-        return; // 被新的渲染取消
+      } catch (err) {
+        // 被新的渲染取消时静默忽略，真正的失败要让用户看见
+        if (
+          cancelled ||
+          (err as { name?: string } | null)?.name === "RenderingCancelledException"
+        ) {
+          return;
+        }
+        setError(
+          `这一页渲染失败：${err instanceof Error ? err.message : "未知错误"}`,
+        );
+        return;
       }
       if (cancelled) return;
 

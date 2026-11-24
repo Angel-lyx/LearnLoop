@@ -74,6 +74,12 @@ async function main() {
   assert(canvases.length >= 2, "PDF 画布与批注层都已创建");
   assert(canvases[0].w > 200 && canvases[0].h > 200, "PDF 画布尺寸正常");
 
+  // 扫描件（JBIG2）依赖 wasm 解码器，静态资源缺失会导致整页空白
+  for (const asset of ["pdfjs-wasm/jbig2.wasm", "pdfjs-cmaps/UniGB-UCS2-H.bcmap"]) {
+    const response = await fetch(`${BASE}/${asset}`);
+    assert(response.ok, `解码资源可访问：${asset}`);
+  }
+
   const painted = await page.evaluate(() => {
     const canvas = document.querySelector("canvas");
     const ctx = canvas.getContext("2d");
