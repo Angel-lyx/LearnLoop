@@ -4,7 +4,8 @@ services:
     container_name: learnloop
     restart: unless-stopped
     ports:
-      - "8000:8000"
+      # 前面挂了 Caddy 时把 LEARNLOOP_BIND 设成 127.0.0.1，避免 8000 也暴露到公网
+      - "${LEARNLOOP_BIND:-0.0.0.0}:8000:8000"
     environment:
       # 数据卷：数据库与上传文件都放这里，容器重建不丢
       DATA_DIR: /data

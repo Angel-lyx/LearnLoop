@@ -59,7 +59,7 @@ REGISTRATION_CODE=换成你自己的邀请码 docker compose up -d --build
 
 ```bash
 # 把域名 A 记录指向服务器 IP，然后：
-DOMAIN=learn.example.com SESSION_COOKIE_SECURE=true \
+DOMAIN=learn.example.com LEARNLOOP_BIND=127.0.0.1 SESSION_COOKIE_SECURE=true \
   docker compose -f docker-compose.yml -f deploy/caddy.compose.yml up -d
 ```
 
