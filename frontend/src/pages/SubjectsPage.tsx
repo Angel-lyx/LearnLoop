@@ -78,7 +78,7 @@ export default function SubjectsPage() {
         {loading && items.length === 0 ? (
           <p className="muted">加载中…</p>
         ) : items.length === 0 ? (
-          <div className="rounded-2xl border border-dashed border-paper-300 bg-white/40 backdrop-blur-sm px-6 py-16 text-center">
+          <div className="rounded-2xl border border-dashed border-paper-300 bg-white/70 backdrop-blur-sm px-6 py-16 text-center">
             <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-brand-50 text-xl">
               📚
             </div>

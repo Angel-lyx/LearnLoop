@@ -110,7 +110,7 @@ export default function SettingsPage() {
       {message && (
         <div
           className={`rounded-lg px-4 py-2.5 text-sm ${
-            message.kind === "ok" ? "bg-green-50 text-green-700" : "bg-red-50 text-red-600"
+            message.kind === "ok" ? "bg-emerald-50 text-emerald-700" : "bg-red-50 text-red-600"
           }`}
         >
           {message.text}
@@ -123,8 +123,8 @@ export default function SettingsPage() {
           <span
             className={`rounded-full px-2 py-0.5 text-[11px] ${
               settings?.configured
-                ? "bg-green-50 text-green-600"
-                : "bg-amber-50 text-amber-600"
+                ? "bg-emerald-50 text-emerald-700"
+                : "bg-amber-50 text-amber-700"
             }`}
           >
             {settings?.configured ? "已配置" : "未配置"}

@@ -79,12 +79,14 @@ class Exam(SQLModel, table=True):
 
 
 class Task(SQLModel, table=True):
-    """每日任务。source=plan 由复习计划生成，manual 为手动添加。"""
+    """每日任务。source=plan 由复习计划生成，manual 为手动添加，ai 为联网生成。"""
 
     id: int | None = Field(default=None, primary_key=True)
     subject_id: int | None = Field(default=None, index=True, foreign_key="subject.id")
     exam_id: int | None = Field(default=None, index=True, foreign_key="exam.id")
     title: str = Field(max_length=200)
+    detail: str = Field(default="", max_length=600)
+    resources: str = Field(default="[]")
     due_date: date = Field(index=True)
     done: bool = Field(default=False)
     source: str = Field(default="plan", max_length=16)

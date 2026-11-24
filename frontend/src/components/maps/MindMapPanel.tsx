@@ -44,7 +44,7 @@ export default function MindMapPanel({ subjectId }: { subjectId: number }) {
       {loading && items.length === 0 ? (
         <p className="text-sm text-ink-400">加载中…</p>
       ) : items.length === 0 ? (
-        <div className="rounded-xl border border-dashed border-paper-300 bg-white/40 backdrop-blur-sm px-6 py-14 text-center">
+        <div className="rounded-xl border border-dashed border-paper-300 bg-white/70 backdrop-blur-sm px-6 py-14 text-center">
           <p className="text-sm text-ink-600">还没有思维导图</p>
           <p className="mt-1 text-xs text-ink-400">
             先上传一些资料或录入错题，AI 生成的内容会更有针对性

@@ -1,3 +1,4 @@
+import json
 from datetime import date
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -32,16 +33,40 @@ def list_tasks(
             "due_date": task.due_date,
             "done": task.done,
             "source": task.source,
+            "detail": task.detail,
+            "resources": _parse_resources(task.resources),
         }
         for task in rows
     ]
     return merge_today(data, target, include_overdue)
 
 
+def _parse_resources(raw: str) -> list[dict]:
+    try:
+        parsed = json.loads(raw or "[]")
+    except json.JSONDecodeError:
+        return []
+    return parsed if isinstance(parsed, list) else []
+
+
+def _to_read(task: Task) -> dict:
+    return {
+        "id": task.id,
+        "subject_id": task.subject_id,
+        "exam_id": task.exam_id,
+        "title": task.title,
+        "due_date": task.due_date,
+        "done": task.done,
+        "source": task.source,
+        "detail": task.detail,
+        "resources": _parse_resources(task.resources),
+    }
+
+
 @router.post("", response_model=TaskRead, status_code=status.HTTP_201_CREATED)
 def create_task(
     payload: TaskCreate, session: Session = Depends(get_session)
-) -> Task:
+) -> dict:
     if payload.subject_id is not None and session.get(Subject, payload.subject_id) is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "学科不存在")
     if payload.exam_id is not None and session.get(Exam, payload.exam_id) is None:
@@ -56,13 +81,13 @@ def create_task(
     session.add(task)
     session.commit()
     session.refresh(task)
-    return task
+    return _to_read(task)
 
 
 @router.patch("/{task_id}", response_model=TaskRead)
 def update_task(
     task_id: int, payload: TaskUpdate, session: Session = Depends(get_session)
-) -> Task:
+) -> dict:
     task = session.get(Task, task_id)
     if task is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "任务不存在")
@@ -75,7 +100,7 @@ def update_task(
     session.add(task)
     session.commit()
     session.refresh(task)
-    return task
+    return _to_read(task)
 
 
 @router.delete("/{task_id}", status_code=status.HTTP_204_NO_CONTENT)

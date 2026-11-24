@@ -1,13 +1,16 @@
 import json
-from datetime import date
+from datetime import date, timedelta
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlmodel import Session, select
 
 from ..db import get_session
 from ..models import Exam, Material, MindMap, Mistake, Subject, Task
-from ..schemas_study import ExamCreate, ExamRead, TaskRead
+from ..schemas_study import AIPlanResult, ExamCreate, ExamRead, PlanDay, PlanResource, PlanTaskItem, TaskRead
+from ..services.deps import get_llm
+from ..services.llm import PLAN_SYSTEM, LLMClient, LLMError
 from ..services.planner import build_plan
+from .tasks import _to_read as task_to_read
 
 router = APIRouter(prefix="/api", tags=["exams"])
 
@@ -116,7 +119,7 @@ def _collect_items(session: Session, subject_id: int, scope: str) -> list[str]:
 @router.post("/exams/{exam_id}/plan", response_model=list[TaskRead])
 def generate_plan(
     exam_id: int, session: Session = Depends(get_session)
-) -> list[Task]:
+) -> list[dict]:
     exam = session.get(Exam, exam_id)
     if exam is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "考试不存在")
@@ -149,4 +152,5 @@ def generate_plan(
     session.commit()
     for task in created:
         session.refresh(task)
+    return [task_to_read(task) for task in created]
     return created

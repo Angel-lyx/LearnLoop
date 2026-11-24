@@ -357,7 +357,7 @@ function CoursesTab({
       </section>
 
       {courses.length === 0 ? (
-        <div className="rounded-xl border border-dashed border-paper-300 bg-white/40 backdrop-blur-sm px-6 py-12 text-center">
+        <div className="rounded-xl border border-dashed border-paper-300 bg-white/70 backdrop-blur-sm px-6 py-12 text-center">
           <p className="text-sm text-ink-600">还没有课程</p>
           <p className="mt-1 text-xs text-ink-400">
             先手动添加几门必修课，或者等 M4.1 的成绩单识别
@@ -695,7 +695,7 @@ function ZongceTab({
             <ul className="mt-2 space-y-1">
               {drafts.map((draft, index) => (
                 <li key={index} className="flex items-center gap-2 text-sm text-ink-800">
-                  <span className="rounded bg-white/60 px-1.5 py-0.5 text-[11px] text-ink-600">
+                  <span className="rounded bg-white/80 px-1.5 py-0.5 text-[11px] text-ink-600">
                     {draft.dimension}
                   </span>
                   <span className="flex-1 truncate">{draft.name}</span>
@@ -808,7 +808,7 @@ function CompositeTab({
             className="w-24 rounded-lg border border-paper-200 px-2 py-1.5 text-sm outline-none focus:border-brand-500"
           />
           {gap !== null && (
-            <span className={gap > 0 ? "text-amber-600" : "text-green-600"}>
+            <span className={gap > 0 ? "text-amber-700" : "text-emerald-700"}>
               {gap > 0 ? `还差 ${gap.toFixed(2)} 分` : `已超出 ${Math.abs(gap).toFixed(2)} 分`}
             </span>
           )}

@@ -7,43 +7,47 @@
     "Microsoft YaHei UI", system-ui, sans-serif;
 
   /* 墨色文字 */
-  --color-ink-950: #15152a;
-  --color-ink-900: #1f1f36;
-  --color-ink-800: #2c2c48;
-  --color-ink-700: #3d3d5c;
-  --color-ink-600: #4f4f70;
-  --color-ink-500: #6b6b8a;
-  --color-ink-400: #8f8fae;
+  --color-ink-950: #1e2329;
+  --color-ink-900: #2a3038;
+  --color-ink-800: #3b434d;
+  --color-ink-700: #54606b;
+  --color-ink-600: #6c7883;
+  --color-ink-500: #86929c;
+  --color-ink-400: #a3adb5;
 
-  /* 暖白纸面 */
-  --color-paper-50: #fbfaff;
-  --color-paper-100: #f5f4fb;
-  --color-paper-200: #e8e6f3;
-  --color-paper-300: #d8d5e8;
+  /* 宣纸底 */
+  --color-paper-50: #fbfaf4;
+  --color-paper-100: #f4f1e7;
+  --color-paper-200: #e2dccc;
+  --color-paper-300: #cfc7b4;
 
-  /* 蓝紫主色（紫 → 蓝的过渡） */
-  --color-brand-50: #efedfd;
-  --color-brand-100: #ddd8fb;
-  --color-brand-200: #c6bef8;
-  --color-brand-400: #8b7bf2;
-  --color-brand-500: #6f5ce8;
-  --color-brand-600: #5b49d6;
-  --color-brand-700: #4a3ab4;
+  /* 花青蓝 → 藕荷紫 */
+  --color-brand-50: #eaf0f8;
+  --color-brand-100: #d8e3f2;
+  --color-brand-200: #b9cce8;
+  --color-brand-400: #6c8fbf;
+  --color-brand-500: #4a6fa5;
+  --color-brand-600: #3b5a8a;
+  --color-brand-700: #2d4770;
 
-  /* 蓝色副色，用于渐变收尾 */
-  --color-sky-300: #a9c6ff;
-  --color-sky-400: #7fa8ff;
-  --color-sky-500: #4f7cf5;
-  --color-sky-600: #3f63e0;
+  /* 藕荷紫 副调 */
+  --color-sky-300: #b7a9d6;
+  --color-sky-400: #8b7ab8;
+  --color-sky-500: #6c5a9e;
+  --color-sky-600: #55477f;
 
-  --color-accent-amber: #d98b2b;
-  --color-accent-teal: #1f9d8f;
+  --color-accent-amber: #b0794a;
+  --color-accent-teal: #4a8c8c;
 
   --shadow-card:
-    0 1px 2px rgba(21, 21, 42, 0.04), 0 12px 28px -20px rgba(21, 21, 42, 0.35);
+    0 1px 2px rgba(42, 48, 56, 0.05), 0 22px 46px -32px rgba(42, 48, 56, 0.45);
   --shadow-float:
-    0 2px 6px rgba(21, 21, 42, 0.06), 0 22px 48px -24px rgba(74, 58, 180, 0.45);
-  --shadow-inset: inset 0 1px 2px rgba(21, 21, 42, 0.07);
+    0 2px 6px rgba(42, 48, 56, 0.06), 0 30px 60px -34px rgba(46, 114, 128, 0.45);
+  --shadow-inset: inset 0 1px 2px rgba(42, 48, 56, 0.06);
+}
+
+html {
+  font-size: 17.5px;
 }
 
 html,
@@ -57,17 +61,17 @@ body {
   color: var(--color-ink-900);
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
-  background-color: #d8e1ff;
+  background-color: #f4f1ea;
   background-image:
-    radial-gradient(1100px 700px at 2% -14%, #ab93ff 0%, rgba(171, 147, 255, 0) 58%),
-    radial-gradient(1000px 720px at 104% -8%, #63a0ff 0%, rgba(99, 160, 255, 0) 58%),
-    radial-gradient(980px 680px at 88% 112%, #3f6ff0 0%, rgba(63, 111, 240, 0) 64%),
-    linear-gradient(135deg, #e7dfff 0%, #dee3ff 36%, #cbdaff 68%, #b3cdff 100%);
+    radial-gradient(1000px 680px at 6% -10%, rgba(74, 111, 165, 0.3), transparent 60%),
+    radial-gradient(900px 620px at 98% -6%, rgba(108, 90, 158, 0.26), transparent 58%),
+    radial-gradient(760px 560px at 70% 112%, rgba(74, 111, 165, 0.16), transparent 62%),
+    linear-gradient(165deg, #faf8f2 0%, #f4f1ea 45%, #f1eff4 100%);
   background-attachment: fixed;
 }
 
 ::selection {
-  background: var(--color-brand-200);
+  background: rgba(46, 114, 128, 0.25);
   color: var(--color-ink-950);
 }
 
@@ -79,31 +83,60 @@ body {
 /* ---------- 组件基元 ---------- */
 
 .card {
-  border: 1px solid rgba(255, 255, 255, 0.68);
+  position: relative;
+  border: 1px solid rgba(198, 190, 170, 0.62);
   border-radius: 16px;
   background: linear-gradient(
     180deg,
-    rgba(255, 255, 255, 0.56) 0%,
-    rgba(239, 236, 255, 0.44) 100%
+    rgba(255, 255, 255, 0.92) 0%,
+    rgba(250, 248, 241, 0.86) 100%
   );
-  backdrop-filter: blur(16px) saturate(150%);
-  -webkit-backdrop-filter: blur(16px) saturate(150%);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
   box-shadow:
-    0 1px 2px rgba(21, 21, 42, 0.05),
-    0 18px 40px -28px rgba(45, 40, 120, 0.5);
+    inset 0 1px 0 rgba(255, 255, 255, 0.9),
+    0 1px 2px rgba(42, 48, 56, 0.05),
+    0 22px 46px -32px rgba(42, 48, 56, 0.45);
+  overflow: hidden;
+}
+
+/* 卡片顶部的一抹「石青→石绿」细线，呼应青绿山水 */
+.card::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 18px;
+  width: 56px;
+  height: 2px;
+  border-radius: 0 0 2px 2px;
+  background: linear-gradient(90deg, #4a6fa5, #6c5a9e);
+  opacity: 0.6;
+}
+
+/* 嵌套卡片不需要再画一条线 */
+.card .card::before {
+  display: none;
 }
 
 .card-lift {
   transition:
-    transform 0.18s ease,
-    box-shadow 0.18s ease,
-    border-color 0.18s ease;
+    transform 0.22s cubic-bezier(0.2, 0.7, 0.3, 1),
+    box-shadow 0.22s ease,
+    border-color 0.22s ease;
+  will-change: transform;
 }
 
 .card-lift:hover {
-  transform: translateY(-2px);
-  border-color: var(--color-brand-200);
-  box-shadow: var(--shadow-float);
+  transform: translateY(-4px) scale(1.006);
+  border-color: rgba(126, 176, 192, 0.75);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.95),
+    0 2px 4px rgba(42, 48, 56, 0.06),
+    0 34px 60px -34px rgba(46, 114, 128, 0.55);
+}
+
+.card-lift:active {
+  transform: translateY(-1px) scale(1.002);
 }
 
 .btn {
@@ -132,55 +165,55 @@ body {
 
 .btn-primary {
   color: #fff;
-  background: linear-gradient(135deg, #8a72f4 0%, #6a63ea 45%, #4f7cf5 100%);
+  background: linear-gradient(135deg, #557cb0 0%, #4a6fa5 50%, #6c5a9e 100%);
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.3),
-    0 8px 18px -10px rgba(79, 95, 232, 0.9);
+    inset 0 1px 0 rgba(255, 255, 255, 0.32),
+    0 12px 26px -14px rgba(74, 111, 165, 0.95);
 }
 
 .btn-primary:hover:not(:disabled) {
   filter: brightness(1.06);
+  transform: translateY(-1px);
 }
 
 .btn-primary:active:not(:disabled) {
-  transform: translateY(1px);
-  box-shadow: inset 0 2px 6px rgba(40, 26, 120, 0.45);
+  transform: translateY(1px) scale(0.995);
+  box-shadow: inset 0 3px 10px rgba(20, 60, 68, 0.5);
 }
 
 .btn-ghost {
-  color: var(--color-ink-600);
-  background: rgba(255, 255, 255, 0.5);
-  border: 1px solid rgba(255, 255, 255, 0.72);
-  box-shadow: 0 1px 2px rgba(21, 21, 42, 0.05);
-  backdrop-filter: blur(8px);
+  color: var(--color-ink-700);
+  background: rgba(255, 255, 255, 0.65);
+  border: 1px solid rgba(198, 190, 170, 0.7);
+  box-shadow: 0 1px 2px rgba(42, 48, 56, 0.04);
 }
 
 .btn-ghost:hover:not(:disabled) {
-  border-color: var(--color-brand-200);
+  border-color: rgba(126, 176, 192, 0.85);
   color: var(--color-brand-600);
-  background: var(--color-paper-50);
+  background: rgba(233, 242, 241, 0.8);
 }
 
 .btn-soft {
   color: var(--color-brand-600);
-  background: var(--color-brand-50);
-  border: 1px solid var(--color-brand-100);
+  background: rgba(211, 231, 229, 0.75);
+  border: 1px solid rgba(175, 211, 208, 0.9);
 }
 
 .btn-soft:hover:not(:disabled) {
-  background: var(--color-brand-100);
+  background: rgba(175, 211, 208, 0.9);
+  color: var(--color-brand-700);
 }
 
 .input {
   width: 100%;
   border-radius: 11px;
-  border: 1px solid rgba(255, 255, 255, 0.75);
-  background: rgba(255, 255, 255, 0.52);
+  border: 1px solid rgba(198, 190, 170, 0.7);
+  background: rgba(255, 255, 255, 0.78);
   padding: 0.5rem 0.75rem;
-  font-size: 0.875rem;
+  font-size: 0.9rem;
   color: var(--color-ink-900);
-  box-shadow: inset 0 1px 2px rgba(21, 21, 42, 0.05);
-  backdrop-filter: blur(8px);
+  box-shadow: inset 0 1px 2px rgba(42, 48, 56, 0.05);
   transition:
     border-color 0.15s ease,
     box-shadow 0.15s ease,
@@ -193,8 +226,11 @@ body {
 
 .input:focus {
   outline: none;
-  border-color: var(--color-brand-400);
-  box-shadow: 0 0 0 3px rgba(111, 92, 232, 0.16);
+  border-color: rgba(79, 140, 150, 0.9);
+  background: #fff;
+  box-shadow:
+    inset 0 1px 2px rgba(42, 48, 56, 0.04),
+    0 0 0 3px rgba(126, 176, 192, 0.22);
 }
 
 .tabbar {
@@ -202,15 +238,15 @@ body {
   gap: 0.25rem;
   padding: 0.25rem;
   border-radius: 12px;
-  background: rgba(255, 255, 255, 0.26);
-  box-shadow: inset 0 1px 3px rgba(45, 40, 120, 0.14);
+  background: rgba(226, 220, 204, 0.45);
+  box-shadow: inset 0 1px 3px rgba(42, 48, 56, 0.1);
 }
 
 .tab {
   border-radius: 9px;
   padding: 0.4rem 0.9rem;
-  font-size: 0.875rem;
-  color: var(--color-ink-500);
+  font-size: 0.9rem;
+  color: var(--color-ink-600);
   transition:
     background 0.15s ease,
     color 0.15s ease,
@@ -219,16 +255,16 @@ body {
 }
 
 .tab:hover {
-  color: var(--color-ink-800);
+  color: var(--color-ink-900);
 }
 
 .tab-active {
-  background: linear-gradient(180deg, #f4efff 0%, #e7dfff 100%);
-  color: var(--color-brand-700);
+  background: #fff;
+  color: var(--color-brand-600);
   font-weight: 500;
   box-shadow:
-    0 1px 2px rgba(21, 21, 42, 0.08),
-    inset 0 1px 0 rgba(255, 255, 255, 0.8);
+    0 1px 2px rgba(42, 48, 56, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.9);
 }
 
 .chip {
@@ -237,55 +273,59 @@ body {
   gap: 0.25rem;
   border-radius: 999px;
   padding: 0.15rem 0.55rem;
-  font-size: 0.6875rem;
+  font-size: 0.72rem;
   line-height: 1.5;
-  background: var(--color-paper-100);
-  color: var(--color-ink-600);
-  border: 1px solid var(--color-paper-200);
+  color: var(--color-ink-700);
+  border: 1px solid rgba(198, 190, 170, 0.7);
+  background: rgba(255, 255, 255, 0.6);
 }
 
 .page-title {
-  font-size: 1.5rem;
+  font-size: 2.05rem;
   font-weight: 700;
   letter-spacing: -0.01em;
   color: var(--color-ink-950);
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.7);
 }
 
 .section-title {
-  font-size: 0.95rem;
-  font-weight: 600;
-  color: var(--color-ink-900);
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: var(--color-ink-950);
+  letter-spacing: 0.01em;
 }
 
 .muted {
   color: var(--color-ink-400);
-  font-size: 0.8125rem;
+  font-size: 0.95rem;
 }
 
 .nav-pill {
   display: flex;
   align-items: center;
   gap: 0.625rem;
-  border-radius: 11px;
-  padding: 0.55rem 0.75rem;
-  font-size: 0.875rem;
+  border-radius: 12px;
+  padding: 0.6rem 0.8rem;
+  font-size: 1rem;
   color: var(--color-ink-600);
   transition:
     background 0.15s ease,
     color 0.15s ease,
-    box-shadow 0.15s ease;
+    box-shadow 0.15s ease,
+    transform 0.15s ease;
 }
 
 .nav-pill:hover {
-  background: var(--color-paper-100);
+  background: rgba(233, 242, 241, 0.85);
   color: var(--color-ink-900);
+  transform: translateX(2px);
 }
 
 .nav-pill-active {
-  background: linear-gradient(180deg, #f5f1ff 0%, #e8e0ff 100%);
-  color: var(--color-brand-700);
+  background: linear-gradient(135deg, #4a6fa5 0%, #6c5a9e 100%);
+  color: #fff;
   font-weight: 500;
   box-shadow:
-    0 1px 2px rgba(21, 21, 42, 0.06),
-    inset 0 1px 0 rgba(255, 255, 255, 0.85);
+    inset 0 1px 0 rgba(255, 255, 255, 0.25),
+    0 10px 24px -16px rgba(74, 111, 165, 0.95);
 }

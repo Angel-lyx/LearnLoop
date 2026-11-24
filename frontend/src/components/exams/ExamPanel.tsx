@@ -62,7 +62,7 @@ export default function ExamPanel({ subjectId }: { subjectId: number }) {
       {(error || notice) && (
         <div
           className={`flex items-center justify-between rounded-lg px-4 py-2.5 text-sm ${
-            error ? "bg-red-50 text-red-600" : "bg-green-50 text-green-700"
+            error ? "bg-red-50 text-red-600" : "bg-emerald-50 text-emerald-700"
           }`}
         >
           <span>{error ?? notice}</span>
@@ -116,7 +116,7 @@ export default function ExamPanel({ subjectId }: { subjectId: number }) {
       {loading && items.length === 0 ? (
         <p className="text-sm text-ink-400">加载中…</p>
       ) : items.length === 0 ? (
-        <div className="rounded-xl border border-dashed border-paper-300 bg-white/40 backdrop-blur-sm px-6 py-14 text-center">
+        <div className="rounded-xl border border-dashed border-paper-300 bg-white/70 backdrop-blur-sm px-6 py-14 text-center">
           <p className="text-sm text-ink-600">还没有考试</p>
           <p className="mt-1 text-xs text-ink-400">录入后可以一键生成复习计划</p>
         </div>
@@ -135,7 +135,7 @@ export default function ExamPanel({ subjectId }: { subjectId: number }) {
                       exam.days_left < 0
                         ? "bg-paper-100 text-ink-400"
                         : exam.days_left <= 7
-                          ? "bg-amber-50 text-amber-600"
+                          ? "bg-amber-50 text-amber-700"
                           : "bg-brand-50 text-brand-600"
                     }`}
                   >

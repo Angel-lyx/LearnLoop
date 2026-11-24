@@ -21,7 +21,7 @@ function StatCard({
 }) {
   const tones = {
     brand: "from-brand-50 to-white text-brand-600",
-    amber: "from-amber-50 to-white text-amber-600",
+    amber: "from-amber-50 to-white text-amber-700",
     teal: "from-teal-50 to-white text-teal-600",
   } as const;
   return (
@@ -141,7 +141,7 @@ export default function DashboardPage() {
                   {task.title}
                 </span>
                 {task.due_date < today && !task.done && (
-                  <span className="chip !border-amber-200 !bg-amber-50 !text-amber-600">
+                  <span className="chip !border-amber-200 !bg-amber-50 !text-amber-700">
                     逾期
                   </span>
                 )}

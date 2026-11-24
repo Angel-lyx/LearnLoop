@@ -45,6 +45,30 @@ COURSE_SYSTEM = """你负责把成绩单整理成结构化课程列表。
 - 跳过总学分、平均分这类汇总行
 - 只输出 JSON，不要解释"""
 
+PLAN_SYSTEM = """你是备考规划师。根据考试信息、学生已有的学习数据以及检索到的资料，制定一份可执行的每日复习计划。
+
+严格输出 JSON：
+{
+  "summary": "整体复习策略，2-3 句",
+  "days": [
+    {
+      "date": "YYYY-MM-DD",
+      "focus": "当天主题，10 字以内",
+      "tasks": [
+        {"title": "具体任务，动词开头", "detail": "怎么做、做到什么程度，40 字以内", "minutes": 60}
+      ],
+      "resources": [{"title": "资料名", "url": "链接"}]
+    }
+  ]
+}
+
+要求：
+- 从今天排到考前一天，每天 2-4 个任务，单任务 20-120 分钟
+- 前期打基础、中期专项突破、最后 2-3 天做模拟和错题回顾
+- 优先利用学生已有的资料与错题，检索到的资料作为补充
+- resources 只从给出的检索结果里挑，没有就留空数组
+- 只输出 JSON，不要解释"""
+
 
 class LLMError(Exception):
     def __init__(self, message: str, status: int = 502) -> None:
@@ -151,6 +175,26 @@ class LLMClient:
             raise LLMError(str(result["error"].get("message", "OCR 失败")), 502)
         pages = result.get("pages", [])
         return "\n".join(str(page.get("text", "")) for page in pages).strip()
+
+    async def search(self, query: str, count: int = 5) -> list[dict[str, str]]:
+        """调用官方 Search 接口，返回精简后的结果列表。"""
+        result = await self._request(
+            "/v1/tools/search",
+            json_body={"query": query[:120], "count": count, "need_content": False},
+            timeout=40,
+        )
+        rows = []
+        for item in result.get("results", [])[:count]:
+            if not isinstance(item, dict) or not item.get("url"):
+                continue
+            rows.append(
+                {
+                    "title": str(item.get("title") or "")[:120],
+                    "url": str(item["url"])[:500],
+                    "summary": str(item.get("summary") or item.get("snippet") or "")[:600],
+                }
+            )
+        return rows
 
     async def ping(self) -> bool:
         await self.chat_text("你是一个测试助手，只回复 OK。", "ping")

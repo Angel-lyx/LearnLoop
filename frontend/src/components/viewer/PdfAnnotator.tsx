@@ -80,9 +80,11 @@ export default function PdfAnnotator({
   const toolRef = useRef<Tool>("pen");
   const colorRef = useRef(PRESET_COLORS[0].value);
   const styleRef = useRef<PenStyle>(PEN_STYLES[0]);
+  const eraseModeRef = useRef<"point" | "page">("point");
   const pageRef = useRef(1);
   const saveTimerRef = useRef<number | null>(null);
   const commitRef = useRef<() => void>(() => {});
+  const clearPageRef = useRef<() => void>(() => {});
   const historyRef = useRef<HistoryState>(EMPTY_HISTORY);
 
   const [doc, setDoc] = useState<PDFDocumentProxy | null>(null);
@@ -93,6 +95,7 @@ export default function PdfAnnotator({
   const [color, setColor] = useState(PRESET_COLORS[0].value);
   const [width, setWidth] = useState(STROKE_WIDTHS[1].value);
   const [penStyle, setPenStyle] = useState<PenStyle>(PEN_STYLES[0]);
+  const [eraseMode, setEraseMode] = useState<"point" | "page">("point");
   const [customColors, setCustomColors] = useState<string[]>(() => loadCustomColors());
   const [history, setHistory] = useState<HistoryState>(EMPTY_HISTORY);
   const [status, setStatus] = useState<SaveStatus>("idle");
@@ -184,6 +187,11 @@ export default function PdfAnnotator({
       }
 
       if (mode === "eraser") {
+        if (eraseModeRef.current === "page") {
+          // 整页模式：点一下就清空本页
+          clearPageRef.current();
+          return;
+        }
         // 用包围盒命中，细笔迹也容易擦到
         const pad = 6;
         const targets = canvas.getObjects().filter((obj) => {
@@ -367,6 +375,7 @@ export default function PdfAnnotator({
     toolRef.current = tool;
     colorRef.current = color;
     styleRef.current = penStyle;
+    eraseModeRef.current = eraseMode;
     if (tool === "pen") {
       canvas.isDrawingMode = true;
       const brush = new fabric.PencilBrush(canvas);
@@ -378,8 +387,24 @@ export default function PdfAnnotator({
     }
     canvas.selection = tool === "select" || tool === "text";
     canvas.defaultCursor =
-      tool === "eraser" ? "cell" : tool === "text" ? "text" : "default";
-  }, [tool, color, width, penStyle]);
+      tool === "eraser" && eraseMode === "point"
+        ? "cell"
+        : tool === "text"
+          ? "text"
+          : "default";
+  }, [tool, color, width, penStyle, eraseMode]);
+
+  function clearPage() {
+    const canvas = fabricRef.current;
+    if (!canvas) return;
+    if (canvas.getObjects().length === 0) return;
+    if (!window.confirm(`清空第 ${pageRef.current} 页的所有批注？`)) return;
+    canvas.getObjects().forEach((obj) => canvas.remove(obj));
+    canvas.requestRenderAll();
+    commitRef.current();
+  }
+
+  clearPageRef.current = clearPage;
 
   function handleUndo() {
     const next = undo(historyRef.current);
@@ -440,6 +465,26 @@ export default function PdfAnnotator({
               </button>
             ))}
           </div>
+
+          {tool === "eraser" && (
+            <>
+              <div className="tabbar">
+                <button
+                  onClick={() => setEraseMode("point")}
+                  className={`tab !px-2 !py-1 text-xs ${eraseMode === "point" ? "tab-active" : ""}`}
+                >
+                  点擦
+                </button>
+                <button
+                  onClick={() => setEraseMode("page")}
+                  className={`tab !px-2 !py-1 text-xs ${eraseMode === "page" ? "tab-active" : ""}`}
+                >
+                  一键清空本页
+                </button>
+              </div>
+              <span className="h-5 w-px bg-paper-200" />
+            </>
+          )}
 
           <span className="h-5 w-px bg-paper-200" />
 

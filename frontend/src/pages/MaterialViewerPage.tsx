@@ -78,7 +78,7 @@ export default function MaterialViewerPage() {
           </p>
         </div>
       ) : (
-        <div className="rounded-xl border border-dashed border-paper-300 bg-white/40 backdrop-blur-sm px-6 py-14 text-center">
+        <div className="rounded-xl border border-dashed border-paper-300 bg-white/70 backdrop-blur-sm px-6 py-14 text-center">
           <p className="text-sm text-ink-600">该格式暂不支持在线预览</p>
           <p className="mt-1 text-xs text-ink-400">
             可以下载原件查看，Word/PPT 转 PDF 预览会在后续版本支持

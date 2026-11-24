@@ -74,7 +74,7 @@ export default function MistakePanel({ subjectId }: { subjectId: number }) {
       {loading && items.length === 0 ? (
         <p className="text-sm text-ink-400">加载中…</p>
       ) : items.length === 0 ? (
-        <div className="rounded-xl border border-dashed border-paper-300 bg-white/40 backdrop-blur-sm px-6 py-14 text-center">
+        <div className="rounded-xl border border-dashed border-paper-300 bg-white/70 backdrop-blur-sm px-6 py-14 text-center">
           <p className="text-sm text-ink-600">还没有错题</p>
           <p className="mt-1 text-xs text-ink-400">
             录入后可让 AI 分析错因、给出解法并生成同类变式题
@@ -126,8 +126,8 @@ function MistakeCard({
             <span
               className={`rounded-full px-2 py-0.5 text-[11px] ${
                 mistake.status === "mastered"
-                  ? "bg-green-50 text-green-600"
-                  : "bg-amber-50 text-amber-600"
+                  ? "bg-emerald-50 text-emerald-700"
+                  : "bg-amber-50 text-amber-700"
               }`}
             >
               {STATUS_LABEL[mistake.status] ?? mistake.status}
@@ -331,7 +331,7 @@ function MistakeForm({
               {analysis.knowledge_points.map((point) => (
                 <span
                   key={point}
-                  className="rounded-full bg-white/60 px-2 py-0.5 text-[11px] text-ink-600"
+                  className="rounded-full bg-white/80 px-2 py-0.5 text-[11px] text-ink-600"
                 >
                   {point}
                 </span>
@@ -343,7 +343,7 @@ function MistakeForm({
               <h4 className="text-xs font-medium text-ink-400">同类变式题</h4>
               <ol className="mt-1 space-y-1.5">
                 {analysis.variants.map((variant, index) => (
-                  <li key={index} className="rounded bg-white/60 p-2">
+                  <li key={index} className="rounded bg-white/80 p-2">
                     <p className="whitespace-pre-wrap text-ink-800">
                       {index + 1}. {variant.question}
                     </p>
