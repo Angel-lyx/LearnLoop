@@ -21,7 +21,7 @@ import {
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = pdfWorkerUrl;
 
-type Tool = "pen" | "eraser" | "select";
+type Tool = "pen" | "eraser" | "text" | "select";
 type SaveStatus = "idle" | "saving" | "saved" | "error";
 
 const COLORS = ["#FFD166", "#FF6B6B", "#4F7CFF", "#22B573"];
@@ -38,6 +38,7 @@ export default function PdfAnnotator({
   const fabricRef = useRef<fabric.Canvas | null>(null);
   const renderTaskRef = useRef<{ cancel: () => void } | null>(null);
   const toolRef = useRef<Tool>("pen");
+  const colorRef = useRef(COLORS[0]);
   const pageRef = useRef(1);
   const saveTimerRef = useRef<number | null>(null);
   const commitRef = useRef<() => void>(() => {});
@@ -85,14 +86,60 @@ export default function PdfAnnotator({
     fabricRef.current = canvas;
 
     canvas.on("path:created", () => commitRef.current());
+
     canvas.on("mouse:down", (event) => {
-      if (toolRef.current !== "eraser") return;
+      const mode = toolRef.current;
       const point = canvas.getScenePoint(event.e);
-      const targets = canvas.getObjects().filter((obj) => obj.containsPoint(point));
-      if (targets.length === 0) return;
-      targets.forEach((obj) => canvas.remove(obj));
-      canvas.requestRenderAll();
-      commitRef.current();
+
+      if (mode === "eraser") {
+        // 用包围盒命中，细笔迹也容易擦到
+        const pad = 6;
+        const targets = canvas.getObjects().filter((obj) => {
+          const rect = obj.getBoundingRect();
+          return (
+            point.x >= rect.left - pad &&
+            point.x <= rect.left + rect.width + pad &&
+            point.y >= rect.top - pad &&
+            point.y <= rect.top + rect.height + pad
+          );
+        });
+        if (targets.length === 0) return;
+        targets.forEach((obj) => canvas.remove(obj));
+        canvas.requestRenderAll();
+        commitRef.current();
+        return;
+      }
+
+      if (mode === "text") {
+        const box = new fabric.Textbox("输入批注…", {
+          left: point.x,
+          top: point.y,
+          width: 220,
+          fontSize: 16,
+          fill: colorRef.current,
+          splitByGrapheme: true,
+          editable: true,
+        });
+        canvas.add(box);
+        canvas.setActiveObject(box);
+        box.enterEditing();
+        box.selectAll();
+
+        // 编辑结束时保存；空文本或仍是占位符的自动丢弃
+        const finish = () => {
+          const value = box.text.trim();
+          if (value.length === 0 || value === "输入批注…") {
+            canvas.remove(box);
+            canvas.requestRenderAll();
+            return;
+          }
+          commitRef.current();
+        };
+        (box as unknown as { on: (name: string, cb: () => void) => void }).on(
+          "editing:exited",
+          finish,
+        );
+      }
     });
 
     return () => {
@@ -215,6 +262,7 @@ export default function PdfAnnotator({
     const canvas = fabricRef.current;
     if (!canvas) return;
     toolRef.current = tool;
+    colorRef.current = color;
     if (tool === "pen") {
       canvas.isDrawingMode = true;
       const brush = new fabric.PencilBrush(canvas);
@@ -224,8 +272,9 @@ export default function PdfAnnotator({
     } else {
       canvas.isDrawingMode = false;
     }
-    canvas.selection = tool === "select";
-    canvas.defaultCursor = tool === "eraser" ? "cell" : "default";
+    canvas.selection = tool === "select" || tool === "text";
+    canvas.defaultCursor =
+      tool === "eraser" ? "cell" : tool === "text" ? "text" : "default";
   }, [tool, color]);
 
   function handleUndo() {
@@ -259,7 +308,7 @@ export default function PdfAnnotator({
     <div className="space-y-3">
       <div className="flex flex-wrap items-center gap-2 rounded-xl border border-paper-200 bg-white px-3 py-2">
         <div className="flex items-center gap-1">
-          {(["pen", "eraser", "select"] as Tool[]).map((item) => (
+          {(["pen", "text", "eraser", "select"] as Tool[]).map((item) => (
             <button
               key={item}
               onClick={() => setTool(item)}
@@ -269,7 +318,13 @@ export default function PdfAnnotator({
                   : "text-ink-600 hover:bg-paper-100"
               }`}
             >
-              {item === "pen" ? "画笔" : item === "eraser" ? "橡皮擦" : "选择"}
+              {item === "pen"
+                ? "画笔"
+                : item === "text"
+                  ? "文字"
+                  : item === "eraser"
+                    ? "橡皮擦"
+                    : "选择"}
             </button>
           ))}
         </div>
@@ -362,7 +417,10 @@ export default function PdfAnnotator({
       <div className="overflow-auto rounded-xl border border-paper-200 bg-paper-100 p-4">
         <div className="relative mx-auto w-fit shadow-sm">
           <canvas ref={pdfCanvasRef} className="block bg-white" />
-          <canvas ref={fabricElRef} className="absolute left-0 top-0" />
+          {/* fabric 会把 canvas 包进 .canvas-container，这层负责把它压在 PDF 上方 */}
+          <div className="absolute inset-0">
+            <canvas ref={fabricElRef} />
+          </div>
         </div>
       </div>
     </div>
