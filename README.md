@@ -6,6 +6,7 @@
 支持多账号：每个人的学科、资料、错题、成绩互相隔离，登录后才能访问自己的数据。
 
 - 产品设计：[docs/product-design.md](docs/product-design.md)（Word 版：`docs/LearnLoop-产品设计文档.docx`）
+- 多人协作怎么改代码：[CONTRIBUTING.md](CONTRIBUTING.md)
 - 技术栈：React 19 + TypeScript + Vite / FastAPI + SQLModel + SQLite / DeepSeek API
 - 部署形态：FastAPI 同时托管前端构建产物，一个端口 + 一块持久磁盘即可常驻运行
 
