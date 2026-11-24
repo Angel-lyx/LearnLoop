@@ -23,8 +23,7 @@
     "vscode": {
       "extensions": [
         "ms-python.python",
-        "bradlc.vscode-tailwindcss",
-        "oxc.oxc-vscode"
+        "bradlc.vscode-tailwindcss"
       ]
     }
   }
