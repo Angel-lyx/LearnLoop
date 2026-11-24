@@ -13,11 +13,11 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@fontsource-variable/noto-sans-sc": "^5.3.1",
     "dexie": "^4.4.7",
     "dexie-react-hooks": "^4.4.0",
     "fabric": "^7.4.0",
     "howler": "^2.2.4",
+    "lxgw-wenkai-screen-webfont": "^1.7.0",
     "mind-elixir": "^6.0.3",
     "pdfjs-dist": "^6.5.438",
     "react": "^19.3.1",

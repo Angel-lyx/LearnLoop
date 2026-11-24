@@ -25,14 +25,9 @@ type Tool = "pen" | "eraser" | "text" | "select";
 type SaveStatus = "idle" | "saving" | "saved" | "error";
 
 const PRESET_COLORS = [
-  "#F2C14E",
-  "#EF6F6C",
-  "#6F5CE8",
-  "#2BB673",
-  "#3D9BE9",
-  "#E270B8",
-  "#111827",
-  "#9CA3AF",
+  { value: "#1F2937", label: "黑色" },
+  { value: "#FFFFFF", label: "白色" },
+  { value: "#EF4444", label: "红色" },
 ];
 const STROKE_WIDTHS = [
   { label: "细", value: 2 },
@@ -40,6 +35,23 @@ const STROKE_WIDTHS = [
   { label: "粗", value: 6 },
   { label: "特粗", value: 10 },
 ];
+
+type PenStyle = {
+  id: "fountain" | "ballpoint" | "highlighter" | "pencil";
+  label: string;
+  factor: number;
+  opacity: number;
+  shadow: boolean;
+};
+
+const PEN_STYLES: PenStyle[] = [
+  { id: "fountain", label: "钢笔", factor: 1, opacity: 1, shadow: true },
+  { id: "ballpoint", label: "圆珠笔", factor: 0.7, opacity: 0.92, shadow: false },
+  { id: "highlighter", label: "荧光笔", factor: 3.6, opacity: 0.3, shadow: false },
+  { id: "pencil", label: "铅笔", factor: 1.05, opacity: 0.55, shadow: false },
+];
+
+const HAND_FONT = '"LXGW WenKai Screen", "KaiTi", cursive';
 const CUSTOM_COLORS_KEY = "learnloop.annotate.customColors";
 
 function loadCustomColors(): string[] {
@@ -66,7 +78,8 @@ export default function PdfAnnotator({
   const fabricRef = useRef<fabric.Canvas | null>(null);
   const renderTaskRef = useRef<{ cancel: () => void } | null>(null);
   const toolRef = useRef<Tool>("pen");
-  const colorRef = useRef(PRESET_COLORS[0]);
+  const colorRef = useRef(PRESET_COLORS[0].value);
+  const styleRef = useRef<PenStyle>(PEN_STYLES[0]);
   const pageRef = useRef(1);
   const saveTimerRef = useRef<number | null>(null);
   const commitRef = useRef<() => void>(() => {});
@@ -77,8 +90,9 @@ export default function PdfAnnotator({
   const [page, setPage] = useState(1);
   const [zoom, setZoom] = useState(1.2);
   const [tool, setTool] = useState<Tool>("pen");
-  const [color, setColor] = useState(PRESET_COLORS[0]);
+  const [color, setColor] = useState(PRESET_COLORS[0].value);
   const [width, setWidth] = useState(STROKE_WIDTHS[1].value);
+  const [penStyle, setPenStyle] = useState<PenStyle>(PEN_STYLES[0]);
   const [customColors, setCustomColors] = useState<string[]>(() => loadCustomColors());
   const [history, setHistory] = useState<HistoryState>(EMPTY_HISTORY);
   const [status, setStatus] = useState<SaveStatus>("idle");
@@ -122,11 +136,52 @@ export default function PdfAnnotator({
     const canvas = new fabric.Canvas(el, { selection: false });
     fabricRef.current = canvas;
 
-    canvas.on("path:created", () => commitRef.current());
+    // 手写字体加载完成后再画，避免文字批注回退成默认字体
+    void document.fonts?.load(`16px "LXGW WenKai Screen"`);
+
+    canvas.on("path:created", (event) => {
+      const style = styleRef.current;
+      const path = (event as unknown as { path?: fabric.Path }).path;
+      if (path) {
+        path.set({
+          opacity: style.opacity,
+          strokeLineCap: "round",
+          strokeLineJoin: "round",
+          strokeUniform: true,
+        });
+        if (style.shadow) {
+          path.set({
+            shadow: new fabric.Shadow({
+              color: "rgba(31,41,55,0.16)",
+              blur: 2,
+              offsetX: 0,
+              offsetY: 0.8,
+            }),
+          });
+        }
+        canvas.requestRenderAll();
+      }
+      commitRef.current();
+    });
+
+    // 记录点击前是否正处于文字编辑：用于区分"结束编辑"与"新建文字"
+    let wasEditing = false;
+    canvas.on("mouse:down:before", () => {
+      const active = canvas.getActiveObject() as
+        | (fabric.Textbox & { isEditing?: boolean })
+        | undefined;
+      wasEditing = Boolean(active?.isEditing);
+    });
 
     canvas.on("mouse:down", (event) => {
       const mode = toolRef.current;
       const point = canvas.getScenePoint(event.e);
+
+      if (mode === "text" && wasEditing) {
+        // 这一下点击只是用来结束编辑，不再新建文本框
+        wasEditing = false;
+        return;
+      }
 
       if (mode === "eraser") {
         // 用包围盒命中，细笔迹也容易擦到
@@ -151,8 +206,9 @@ export default function PdfAnnotator({
         const box = new fabric.Textbox("输入批注…", {
           left: point.x,
           top: point.y,
-          width: 220,
-          fontSize: 16,
+          width: 240,
+          fontSize: 20,
+          fontFamily: HAND_FONT,
           fill: colorRef.current,
           splitByGrapheme: true,
           editable: true,
@@ -310,11 +366,12 @@ export default function PdfAnnotator({
     if (!canvas) return;
     toolRef.current = tool;
     colorRef.current = color;
+    styleRef.current = penStyle;
     if (tool === "pen") {
       canvas.isDrawingMode = true;
       const brush = new fabric.PencilBrush(canvas);
       brush.color = color;
-      brush.width = width;
+      brush.width = width * penStyle.factor;
       canvas.freeDrawingBrush = brush;
     } else {
       canvas.isDrawingMode = false;
@@ -322,7 +379,7 @@ export default function PdfAnnotator({
     canvas.selection = tool === "select" || tool === "text";
     canvas.defaultCursor =
       tool === "eraser" ? "cell" : tool === "text" ? "text" : "default";
-  }, [tool, color, width]);
+  }, [tool, color, width, penStyle]);
 
   function handleUndo() {
     const next = undo(historyRef.current);
@@ -386,11 +443,48 @@ export default function PdfAnnotator({
 
           <span className="h-5 w-px bg-paper-200" />
 
+          <div className="flex items-center gap-1">
+            <span className="mr-1 text-[11px] text-ink-400">笔型</span>
+            {PEN_STYLES.map((item) => (
+              <button
+                key={item.id}
+                onClick={() => setPenStyle(item)}
+                className={`rounded-md px-2 py-1 text-[11px] transition-colors ${
+                  penStyle.id === item.id
+                    ? "bg-brand-50 font-medium text-brand-600"
+                    : "text-ink-500 hover:bg-paper-100"
+                }`}
+              >
+                {item.label}
+              </button>
+            ))}
+          </div>
+
+          <span className="h-5 w-px bg-paper-200" />
+
           <div className="flex items-center gap-1.5">
-            {[...PRESET_COLORS, ...customColors].map((item) => (
+            {PRESET_COLORS.map((item) => (
+              <button
+                key={item.value}
+                aria-label={`画笔颜色 ${item.label}`}
+                aria-pressed={color === item.value}
+                onClick={() => setColor(item.value)}
+                className={`h-6 w-6 rounded-full transition-transform ${
+                  color === item.value
+                    ? "scale-115 ring-2 ring-brand-300 ring-offset-2"
+                    : "hover:scale-105"
+                }`}
+                style={{
+                  backgroundColor: item.value,
+                  boxShadow: "inset 0 0 0 1px rgba(21,21,42,.18)",
+                }}
+              />
+            ))}
+
+            {customColors.map((item) => (
               <button
                 key={item}
-                aria-label={`画笔颜色 ${item}`}
+                aria-label={`常用颜色 ${item}`}
                 aria-pressed={color === item}
                 onClick={() => setColor(item)}
                 className={`h-6 w-6 rounded-full transition-transform ${

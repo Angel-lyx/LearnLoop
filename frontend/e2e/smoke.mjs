@@ -101,9 +101,10 @@ async function main() {
     `批注层完整位于视口内（y=${Math.round(box.y)}…${Math.round(box.y + box.height)}）`,
   );
 
-  // 选一个自定义配色 + 粗笔，验证颜色与粗细生效
-  await page.getByRole("button", { name: "画笔颜色 #6F5CE8" }).click();
+  // 选红色 + 粗笔 + 钢笔，验证颜色、粗细与笔型生效
+  await page.getByRole("button", { name: "画笔颜色 红色" }).click();
   await page.getByRole("button", { name: "粗", exact: true }).click();
+  await page.getByRole("button", { name: "钢笔", exact: true }).click();
 
   await page.mouse.move(box.x + 60, box.y + 60);
   await page.mouse.down();
@@ -127,8 +128,9 @@ async function main() {
   const stroke = JSON.parse(annotations[0].payload).find(
     (obj) => String(obj.type).toLowerCase() === "path",
   );
-  assert(stroke?.stroke === "#6F5CE8", `笔迹颜色生效（${stroke?.stroke}）`);
+  assert(stroke?.stroke === "#EF4444", `笔迹颜色生效（${stroke?.stroke}）`);
   assert(Number(stroke?.strokeWidth) === 6, `笔迹粗细生效（${stroke?.strokeWidth}）`);
+  assert(stroke?.opacity === 1, "钢笔为不透明笔迹");
   await page.screenshot({ path: path.join(OUT, "2-drawn.png") });
 
   await page.getByRole("button", { name: "文字", exact: true }).click();
@@ -148,6 +150,10 @@ async function main() {
   assert(
     payload.some((obj) => (obj.text ?? "").includes("极限存在条件")),
     "文字内容正确保存",
+  );
+  assert(
+    !payload.some((obj) => (obj.text ?? "").includes("输入批注")),
+    "结束编辑时不会再留下占位文本框",
   );
   await page.screenshot({ path: path.join(OUT, "3-text.png") });
 

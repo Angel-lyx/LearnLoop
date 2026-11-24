@@ -1,10 +1,10 @@
-@import "@fontsource-variable/noto-sans-sc";
+@import "lxgw-wenkai-screen-webfont/lxgwwenkaigbscreen.css";
 @import "tailwindcss";
 
 @theme {
   --font-sans:
-    "Noto Sans SC Variable", "PingFang SC", "Microsoft YaHei UI", "Microsoft YaHei",
-    system-ui, sans-serif;
+    "LXGW WenKai Screen", "LXGW WenKai", "KaiTi", "STKaiti", "PingFang SC",
+    "Microsoft YaHei UI", system-ui, sans-serif;
 
   /* 墨色文字 */
   --color-ink-950: #15152a;
@@ -50,12 +50,13 @@ body {
   margin: 0;
   color: var(--color-ink-900);
   font-family: var(--font-sans);
-  font-feature-settings: "tnum" 1;
   -webkit-font-smoothing: antialiased;
-  background-color: var(--color-paper-100);
+  background-color: #e7e3fa;
   background-image:
-    radial-gradient(900px 500px at 12% -10%, rgba(111, 92, 232, 0.1), transparent 60%),
-    radial-gradient(700px 420px at 100% 0%, rgba(110, 158, 255, 0.1), transparent 55%);
+    radial-gradient(1100px 620px at 8% -12%, #cbc0ff 0%, transparent 58%),
+    radial-gradient(900px 560px at 98% 2%, #b9cdff 0%, transparent 55%),
+    radial-gradient(700px 500px at 50% 110%, #d8ccff 0%, transparent 60%),
+    linear-gradient(160deg, #ece7fd 0%, #e5e2fa 45%, #dfe6fb 100%);
   background-attachment: fixed;
 }
 

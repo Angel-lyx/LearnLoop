@@ -8,9 +8,6 @@ importers:
 
   .:
     dependencies:
-      '@fontsource-variable/noto-sans-sc':
-        specifier: ^5.3.1
-        version: 5.3.1
       dexie:
         specifier: ^4.4.7
         version: 4.4.7
@@ -23,6 +20,9 @@ importers:
       howler:
         specifier: ^2.2.4
         version: 2.2.4
+      lxgw-wenkai-screen-webfont:
+        specifier: ^1.7.0
+        version: 1.7.0
       mind-elixir:
         specifier: ^6.0.3
         version: 6.0.3
@@ -156,9 +156,6 @@ packages:
     peerDependenciesMeta:
       '@noble/hashes':
         optional: true
-
-  '@fontsource-variable/noto-sans-sc@5.3.1':
-    resolution: {integrity: sha512-UB96JJ17HyD5ehEU7Em0hDdh7fvTMB4B4Hzmq5c4QaNwwSLqTrdM2S+coySeBqCkXwh0DxqXT0b0wMrmzorFpQ==}
 
   '@jridgewell/gen-mapping@0.3.13':
     resolution: {integrity: sha512-2kkt/7niJ6MgEPxF0bYdQ6etZaA+fQvDcLKckhy1yIQOzaoKjBBjSj63/aLVjYE3qhRt5dvM+uUyfCg6UKCBbA==}
@@ -1118,6 +1115,9 @@ packages:
     resolution: {integrity: sha512-U4N8FgzmWxc8k1VH8Kr6lQg18U7Fjvby6wXHVRX/ZZ7IwWbRMgrRbP0Wrb5q5NVinryp4SQampHKdvtecItxUg==}
     engines: {node: 20 || >=22}
 
+  lxgw-wenkai-screen-webfont@1.7.0:
+    resolution: {integrity: sha512-xvfF4V26Mb335xKg3uxljz+V2nq4F5ek0ku9pmyKgT0Dzo/d2rHi7WpnqgvM9mlXAcAKOrxrcDmUZiIs/ZQ9bQ==}
+
   lz-string@1.5.0:
     resolution: {integrity: sha512-h5bgJWpxJNswbU7qCrV0tIKQCaS3blPDrqKWx+QxzuzL1zGUzij9XCWLrSLsJPu5t+eWA/ycetzYAO5IOMcWAQ==}
     hasBin: true
@@ -1639,8 +1639,6 @@ snapshots:
     optional: true
 
   '@exodus/bytes@1.16.0': {}
-
-  '@fontsource-variable/noto-sans-sc@5.3.1': {}
 
   '@jridgewell/gen-mapping@0.3.13':
     dependencies:
@@ -2363,6 +2361,8 @@ snapshots:
     optional: true
 
   lru-cache@11.5.3: {}
+
+  lxgw-wenkai-screen-webfont@1.7.0: {}
 
   lz-string@1.5.0: {}
 

@@ -29,7 +29,13 @@ export default function AppShell() {
 
   return (
     <div className="flex h-full min-h-screen">
-      <aside className="sticky top-0 flex h-screen w-60 shrink-0 flex-col border-r border-paper-200 bg-white/80 px-3 py-5 backdrop-blur">
+      <aside
+        className="sticky top-0 flex h-screen w-60 shrink-0 flex-col border-r border-white/50 px-3 py-5 backdrop-blur-xl"
+        style={{
+          background:
+            "linear-gradient(180deg, rgba(255,255,255,.66) 0%, rgba(236,231,254,.58) 100%)",
+        }}
+      >
         <div className="mb-6 flex items-center gap-2.5 px-1.5">
           <span
             className="flex h-9 w-9 items-center justify-center rounded-xl text-base font-bold text-white"
@@ -77,7 +83,7 @@ export default function AppShell() {
           ))}
         </nav>
 
-        <div className="mt-auto rounded-xl border border-paper-200 bg-paper-50 px-3 py-3 text-[11px] leading-relaxed text-ink-400">
+        <div className="mt-auto rounded-xl border border-white/60 bg-white/45 px-3 py-3 text-[11px] leading-relaxed text-ink-400 backdrop-blur">
           <div className="flex items-center gap-1.5 text-ink-600">
             <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
             数据存在本机
