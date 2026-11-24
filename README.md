@@ -48,6 +48,12 @@ REGISTRATION_CODE=你自己的码 bash .devcontainer/start.sh
 tail -f /tmp/learnloop.log     # 看日志
 ```
 
+国内网络装依赖很慢时，走镜像重跑一次（快 3–5 倍）：
+
+```bash
+USE_CN_MIRROR=1 bash .devcontainer/setup.sh
+```
+
 **限制（很重要）**
 
 - GitHub 免费账号每月 120 核时，2 核机器约等于 60 小时；闲置 30 分钟自动停止，停止期间链接打不开
