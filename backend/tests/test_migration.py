@@ -170,6 +170,105 @@ def test_migrate_is_repeatable(tmp_path):
         assert session.get(Subject, 1).name == "高等数学"
 
 
+def test_migrate_recovers_rows_stranded_in_legacy_table(tmp_path):
+    """重建中途被打断：新表建好了但没数据，旧数据还在临时表里。"""
+    db_path = tmp_path / "broken.db"
+    connection = sqlite3.connect(db_path)
+    new_schema = """
+        CREATE TABLE "{name}" (
+            id INTEGER NOT NULL,
+            user_id INTEGER,
+            name VARCHAR(50) NOT NULL,
+            color VARCHAR(20) NOT NULL,
+            icon VARCHAR(32) NOT NULL,
+            archived BOOLEAN NOT NULL,
+            created_at DATETIME NOT NULL,
+            updated_at DATETIME NOT NULL,
+            PRIMARY KEY (id)
+        )
+    """
+    connection.execute(new_schema.format(name="subject"))
+    connection.execute(new_schema.format(name="subject_legacy_tmp"))
+    connection.execute(
+        "INSERT INTO subject_legacy_tmp VALUES (1, NULL, '高等数学', '#4F7CFF', "
+        "'book', 0, '2026-01-01 00:00:00', '2026-01-01 00:00:00')"
+    )
+    connection.execute(
+        "INSERT INTO subject_legacy_tmp VALUES (2, NULL, '大学物理', '#4F7CFF', "
+        "'book', 0, '2026-01-01 00:00:00', '2026-01-01 00:00:00')"
+    )
+    connection.execute(
+        "CREATE UNIQUE INDEX ix_subject_name ON subject_legacy_tmp (name)"
+    )
+    connection.commit()
+    connection.close()
+
+    engine = create_engine(f"sqlite:///{db_path.as_posix()}")
+    SQLModel.metadata.create_all(engine)
+    migrate(engine)
+
+    with engine.connect() as conn:
+        tables = {
+            row[0]
+            for row in conn.exec_driver_sql(
+                "SELECT name FROM sqlite_master WHERE type='table'"
+            ).all()
+        }
+        assert "subject_legacy_tmp" not in tables
+        names = [
+            row[0]
+            for row in conn.exec_driver_sql("SELECT name FROM subject ORDER BY id").all()
+        ]
+        assert names == ["高等数学", "大学物理"]
+
+        indexes = {
+            row[1]: row[2]
+            for row in conn.exec_driver_sql('PRAGMA index_list("subject")').all()
+        }
+        assert indexes.get("uq_subject_user_name") == 1
+        assert indexes.get("ix_subject_name") == 0
+
+
+def test_migrate_recovers_when_subject_table_missing(tmp_path):
+    """重建更早一步被打断：旧表已删，新表还没改名。"""
+    db_path = tmp_path / "broken2.db"
+    connection = sqlite3.connect(db_path)
+    connection.execute(
+        """
+        CREATE TABLE "subject__new" (
+            id INTEGER NOT NULL,
+            user_id INTEGER,
+            name VARCHAR(50) NOT NULL,
+            color VARCHAR(20) NOT NULL,
+            icon VARCHAR(32) NOT NULL,
+            archived BOOLEAN NOT NULL,
+            created_at DATETIME NOT NULL,
+            updated_at DATETIME NOT NULL,
+            PRIMARY KEY (id)
+        )
+        """
+    )
+    connection.execute(
+        "INSERT INTO subject__new VALUES (1, NULL, '线性代数', '#4F7CFF', 'book', 0, "
+        "'2026-01-01 00:00:00', '2026-01-01 00:00:00')"
+    )
+    connection.commit()
+    connection.close()
+
+    engine = create_engine(f"sqlite:///{db_path.as_posix()}")
+    SQLModel.metadata.create_all(engine)
+    migrate(engine)
+
+    with engine.connect() as conn:
+        assert "subject__new" not in {
+            row[0]
+            for row in conn.exec_driver_sql(
+                "SELECT name FROM sqlite_master WHERE type='table'"
+            ).all()
+        }
+        assert conn.exec_driver_sql("SELECT name FROM subject").scalar() == "线性代数"
+
+
 def test_fresh_database_needs_no_legacy_tables(tmp_path):
     db_path = tmp_path / "new.db"
     engine = create_engine(f"sqlite:///{db_path.as_posix()}")

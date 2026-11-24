@@ -106,7 +106,7 @@ Caddy 会自动申请 Let's Encrypt 证书，80/443 直接可用。
 backend/            FastAPI 服务
   app/routers/      认证、学科、资料、错题、考试、任务、导图、保研、搜索、备份
   app/services/     LLM 客户端、计划排期、成绩计算
-  tests/            pytest（149 项）
+  tests/            pytest（151 项）
   data/             运行时 SQLite 与上传文件（不提交）
 frontend/           React 应用
   src/pages/        页面（含登录页）
@@ -121,7 +121,7 @@ scripts/            文档校验与转换脚本
 ## 测试
 
 ```bash
-cd backend  && .venv/Scripts/python.exe -m pytest     # 149 passed
+cd backend  && .venv/Scripts/python.exe -m pytest     # 151 passed
 cd frontend && pnpm test                              # 54 passed
 cd frontend && pnpm build                             # 类型检查 + 打包
 node scripts/check-docs.mjs                           # 文档结构校验
