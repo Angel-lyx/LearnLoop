@@ -29,3 +29,36 @@ export interface AnnotationPage {
   payload: string;
   updated_at: string;
 }
+
+export interface Variant {
+  question: string;
+  answer: string;
+}
+
+export interface Mistake {
+  id: number;
+  subject_id: number;
+  question: string;
+  answer: string;
+  error_analysis: string;
+  solution: string;
+  knowledge_points: string[];
+  variants: Variant[];
+  status: "unmastered" | "mastered" | "archived" | string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface Analysis {
+  error_analysis: string;
+  solution: string;
+  knowledge_points: string[];
+  variants: Variant[];
+}
+
+export interface AISettings {
+  configured: boolean;
+  model: string;
+  base_url: string;
+  source: "database" | "environment" | "none";
+}

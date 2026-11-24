@@ -1,4 +1,11 @@
-import type { AnnotationPage, Material } from "../types";
+import type {
+  AISettings,
+  Analysis,
+  AnnotationPage,
+  Material,
+  Mistake,
+  Subject,
+} from "../types";
 
 export class ApiError extends Error {
   readonly status: number;
@@ -32,7 +39,7 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   return (await response.json()) as T;
 }
 
-async function upload<T>(path: string, file: File): Promise<T> {
+async function postFile<T>(path: string, file: File): Promise<T> {
   const form = new FormData();
   form.append("file", file);
   const response = await fetch(`/api${path}`, { method: "POST", body: form });
@@ -48,14 +55,14 @@ export const api = {
     request<T>(path, { method: "PUT", body: JSON.stringify(body) }),
   patch: <T>(path: string, body: unknown) =>
     request<T>(path, { method: "PATCH", body: JSON.stringify(body) }),
-  delete: (path: string) => request<void>(path, { method: "DELETE" }),
+  delete: <T = void>(path: string) => request<T>(path, { method: "DELETE" }),
 };
 
 export const materialsApi = {
   list: (subjectId: number) => api.get<Material[]>(`/subjects/${subjectId}/materials`),
   get: (materialId: number) => api.get<Material>(`/materials/${materialId}`),
   upload: (subjectId: number, file: File) =>
-    upload<Material>(`/subjects/${subjectId}/materials`, file),
+    postFile<Material>(`/subjects/${subjectId}/materials`, file),
   remove: (materialId: number) => api.delete(`/materials/${materialId}`),
   fileUrl: (materialId: number) => `/api/materials/${materialId}/file`,
   annotations: (materialId: number) =>
@@ -63,3 +70,31 @@ export const materialsApi = {
   saveAnnotations: (materialId: number, page: number, payload: string) =>
     api.put<AnnotationPage>(`/materials/${materialId}/annotations/${page}`, { payload }),
 };
+
+export const mistakesApi = {
+  list: (subjectId: number, status?: string) =>
+    api.get<Mistake[]>(
+      `/subjects/${subjectId}/mistakes${status ? `?status=${encodeURIComponent(status)}` : ""}`,
+    ),
+  get: (mistakeId: number) => api.get<Mistake>(`/mistakes/${mistakeId}`),
+  create: (subjectId: number, payload: unknown) =>
+    api.post<Mistake>(`/subjects/${subjectId}/mistakes`, payload),
+  update: (mistakeId: number, payload: unknown) =>
+    api.patch<Mistake>(`/mistakes/${mistakeId}`, payload),
+  remove: (mistakeId: number) => api.delete(`/mistakes/${mistakeId}`),
+};
+
+export const aiApi = {
+  analyze: (question: string, answer = "") =>
+    api.post<Analysis>("/ai/analyze", { question, answer }),
+  transcribe: (file: File) => postFile<{ text: string }>("/ai/transcribe", file),
+};
+
+export const settingsApi = {
+  read: () => api.get<AISettings>("/settings/ai"),
+  saveKey: (apiKey: string) => api.put<AISettings>("/settings/ai", { api_key: apiKey }),
+  clearKey: () => api.delete<AISettings>("/settings/ai"),
+  test: () => api.post<{ ok: boolean }>("/settings/ai/test", {}),
+};
+
+export type { Subject };
